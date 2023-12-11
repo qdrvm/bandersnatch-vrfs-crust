@@ -1,0 +1,29 @@
+[package]
+name = "bandersnatch_vrfs_crust"
+version = "0.4.0"
+description = "Ring VRFs and thin VRF on bandersnatch"
+license = "Apache-2.0"
+build = "build.rs"
+
+[dependencies]
+# bandersnatch crypto
+bandersnatch_vrfs = { git = "https://github.com/w3f/ring-vrf", rev = "4831a70", default-features = false, features = ["substrate-curves"], optional = true }
+
+[features]
+default = ["std"]
+std = [
+    "bandersnatch_vrfs/std",
+]
+
+# This feature adds Bandersnatch crypto primitives.
+# It should not be used in production since the implementation and interface may still
+# be subject to significant changes.
+bandersnatch-experimental = ["bandersnatch_vrfs"]
+
+[build-dependencies]
+cbindgen = "0.26.0"
+
+[lib]
+name = "bandersnatch_vrfs_crust"
+crate-type = ["cdylib", "staticlib"]
+
