@@ -20,7 +20,9 @@ extern crate core;
 
 // mod utils;
 
-use std::os::raw::c_ulong;
+use core::ffi::c_ulong;
+use core::ffi::c_void;
+use std::ops::Deref;
 use std::{ptr, slice};
 // use std::vec::Vec;
 use bandersnatch_vrfs::{
@@ -145,6 +147,30 @@ pub unsafe extern "C" fn bandersnatch_keypair_from_seed(keypair_out: *mut u8, se
 pub type VrfInput = bandersnatch_vrfs::VrfInput;
 pub type VrfPreOut = bandersnatch_vrfs::VrfPreOut;
 pub type VrfInOut = bandersnatch_vrfs::VrfInOut;
+
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_SecretKey {}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_SecretKey_destroy(secret_ptr: *mut bandersnatch_SecretKey) {
+    unsafe {
+        let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
+        let _ = (*secret).deref();
+    }
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_SecretKey_from_seed(
+    seed_ptr: *const u8,
+) -> *mut bandersnatch_SecretKey {
+    let seed = &*(seed_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
+    let secret = SecretKey::from_seed(&seed);
+    let mut secret = Box::new(secret);
+    let ptr = &mut secret as *mut _ as *const c_void;
+    ptr as *mut bandersnatch_SecretKey
+}
 
 #[allow(unused_attributes)]
 #[no_mangle]

@@ -19,7 +19,7 @@ message(STATUS "[bandersnatch_vrfs] library: ${lib}")
 
 
 set(include_path ${PROJECT_SOURCE_DIR}/include)
-set(bandersnatch_vrfs_h_dir ${include_path}/bandersnatch_vrfs)
+set(bandersnatch_vrfs_h_dir ${PROJECT_SOURCE_DIR}/bandersnatch_vrfs-crust)
 
 ### setup tasks
 add_custom_target(

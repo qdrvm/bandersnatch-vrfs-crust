@@ -3,10 +3,22 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-#include "../include/bandersnatch_vrfs_crust.h"
+#include "bandersnatch_vrfs/bandersnatch_vrfs.hpp"
+
+#include "../bandersnatch_vrfs-crust/bandersnatch_vrfs_crust.h"
+
+#include <span>
 
 namespace bandersnatch_vrfs {
 
-;
+  SecretKey SecretKey::from_seed(std::span<const uint8_t> seed) {
+    SecretKey res;
+    res.secret_ = bandersnatch_SecretKey_from_seed(seed.data());
+    return res;
+  }
 
-} // namespace bandersnatch_vrfs
+  SecretKey::~SecretKey() {
+    bandersnatch_SecretKey_destroy(secret_);
+  }
+
+}  // namespace bandersnatch_vrfs
