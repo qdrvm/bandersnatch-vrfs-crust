@@ -73,10 +73,6 @@ add_test(
 include(GNUInstallDirs)
 
 install(
-    DIRECTORY ${bandersnatch_vrfs_h_dir}
-    TYPE INCLUDE
-)
-install(
     FILES ${lib}
     TYPE LIB
 )
