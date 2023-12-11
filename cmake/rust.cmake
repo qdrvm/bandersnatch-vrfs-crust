@@ -17,9 +17,7 @@ else ()
 endif ()
 message(STATUS "[bandersnatch_vrfs] library: ${lib}")
 
-
 set(include_path ${PROJECT_SOURCE_DIR}/include)
-set(bandersnatch_vrfs_h_dir ${PROJECT_SOURCE_DIR}/bandersnatch_vrfs-crust)
 
 ### setup tasks
 add_custom_target(
@@ -59,8 +57,6 @@ set_target_properties(bandersnatch_vrfs_crust PROPERTIES
     IMPORTED_LOCATION ${lib}
     )
 add_dependencies(bandersnatch_vrfs_crust cargo_build)
-
-file(MAKE_DIRECTORY ${bandersnatch_vrfs_h_dir})
 
 ### add tests
 add_test(

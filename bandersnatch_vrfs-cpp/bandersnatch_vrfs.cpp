@@ -5,7 +5,7 @@
 
 #include "bandersnatch_vrfs/bandersnatch_vrfs.hpp"
 
-#include "../bandersnatch_vrfs-crust/bandersnatch_vrfs_crust.h"
+#include "bandersnatch_vrfs_crust.h"
 
 #include <span>
 
