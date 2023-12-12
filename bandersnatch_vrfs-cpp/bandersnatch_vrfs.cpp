@@ -21,4 +21,10 @@ namespace bandersnatch_vrfs {
     bandersnatch_SecretKey_destroy(secret_);
   }
 
+  PublicKey SecretKey::publicKey() const {
+    PublicKey res;
+    bandersnatch_SecretKey_to_public(secret_, res.data());
+    return res;
+  }
+
 }  // namespace bandersnatch_vrfs

@@ -18,20 +18,15 @@
 extern crate bandersnatch_vrfs;
 extern crate core;
 
-// mod utils;
-
 use core::ffi::c_ulong;
 use core::ffi::c_void;
 use std::ops::Deref;
 use std::{ptr, slice};
-// use std::vec::Vec;
 use bandersnatch_vrfs::{
     CanonicalSerialize,
     IntoVrfInput,
-    //Message,
     SecretKey,
 };
-// use utils::*;
 
 /*
 #[repr(C)]
@@ -85,6 +80,9 @@ pub const BANDERSNATCH_SECRET_KEY_SIZE: usize = 33;
 pub const BANDERSNATCH_PUBLIC_KEY_SIZE: usize = 33;
 
 pub const BANDERSNATCH_SIGNATURE_SIZE: usize = 65;
+
+///
+pub const BANDERSNATCH_PREOUT_SIZE: usize = 33;
 
 pub struct Signature([u8; BANDERSNATCH_SIGNATURE_SIZE]);
 
@@ -144,12 +142,17 @@ pub unsafe extern "C" fn bandersnatch_keypair_from_seed(keypair_out: *mut u8, se
 //
 // }
 
+pub type P = bandersnatch_vrfs::VrfInput;
+
 pub type VrfInput = bandersnatch_vrfs::VrfInput;
 pub type VrfPreOut = bandersnatch_vrfs::VrfPreOut;
 pub type VrfInOut = bandersnatch_vrfs::VrfInOut;
 
 #[allow(non_camel_case_types)]
 pub enum bandersnatch_SecretKey {}
+
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_VrfInput {}
 
 #[allow(unused_attributes)]
 #[no_mangle]
@@ -170,6 +173,66 @@ pub unsafe extern "C" fn bandersnatch_SecretKey_from_seed(
     let mut secret = Box::new(secret);
     let ptr = &mut secret as *mut _ as *const c_void;
     ptr as *mut bandersnatch_SecretKey
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_SecretKey_to_public(
+    secret_ptr: *mut bandersnatch_SecretKey,
+    public_out: *mut u8,
+) {
+    let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
+    let secret = &*secret;
+
+    let public = secret.to_public();
+
+    let out = slice::from_raw_parts_mut(public_out, BANDERSNATCH_PUBLIC_KEY_SIZE as usize);
+
+    let _ = public.serialize(out);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_SecretKey_vrf_preout(
+    secret_ptr: *mut bandersnatch_SecretKey,
+    input_ptr: *const u8,
+    input_size: usize,
+    preout_ptr: *mut u8,
+    preout_size: usize,
+) {
+    let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
+    let secret = &*secret;
+
+    let input_ptr = input_ptr as *const _ as *const VrfInput;
+    let vrf_input = &*input_ptr;
+
+    let preout_ptr = preout_ptr as *mut _ as *mut VrfPreOut;
+    let vrf_preout = &mut *preout_ptr;
+
+    vrf_preout.0 = secret.vrf_preout(&vrf_input).0;
+}
+
+//vrf::VrfInOut vrf_inout(const vrf::VrfInput &input) const;
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_SecretKey_vrf_inout(
+    secret_ptr: *mut bandersnatch_SecretKey,
+    input_ptr: *const u8,
+    input_size: usize,
+    inout_ptr: *mut u8,
+    inout_size: usize,
+) {
+    let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
+    let secret = &*secret;
+
+    let input_ptr = input_ptr as *const _ as *const VrfInput;
+    let vrf_input = *input_ptr;
+
+    let inout_ptr = inout_ptr as *mut _ as *mut VrfInOut;
+    let mut vrf_inout = &*inout_ptr;
+
+    vrf_inout = &secret.vrf_inout(vrf_input);
 }
 
 #[allow(unused_attributes)]
