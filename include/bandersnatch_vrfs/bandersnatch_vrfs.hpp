@@ -13,15 +13,26 @@ struct bandersnatch_SecretKey;
 
 namespace bandersnatch_vrfs {
 
-  using PublicKey = std::array<uint8_t, 33>;
+  using Seed = std::array<uint8_t, 32>;
+  using Affine = std::array<uint8_t, 33>;
+  using PublicKey = Affine;
+  using VrfInput = Affine;
+  using VrfOutput = Affine;
+  using VrfPreOut = Affine;
+  struct VrfInOut {
+    VrfInput input;
+    VrfPreOut preout;
+  };
 
   class SecretKey {
    public:
-    static SecretKey from_seed(std::span<const uint8_t> seed);
+    explicit SecretKey(const Seed& seed);
 
     ~SecretKey();
 
     PublicKey publicKey() const;
+    VrfPreOut vrfPreOut(const VrfInput& vrf_input) const;
+    VrfInOut vrfInOut(const VrfInput& vrf_input) const;
 
    private:
     bandersnatch_SecretKey *secret_;
