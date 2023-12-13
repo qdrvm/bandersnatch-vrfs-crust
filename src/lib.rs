@@ -230,9 +230,9 @@ pub unsafe extern "C" fn bandersnatch_SecretKey_vrf_inout(
     let vrf_input = *input_ptr;
 
     let inout_ptr = inout_ptr as *mut _ as *mut VrfInOut;
-    let mut vrf_inout = &*inout_ptr;
+    let mut vrf_inout = &mut *inout_ptr;
 
-    vrf_inout = &secret.vrf_inout(vrf_input);
+    vrf_inout = &mut secret.vrf_inout(vrf_input);
 }
 
 #[allow(unused_attributes)]
