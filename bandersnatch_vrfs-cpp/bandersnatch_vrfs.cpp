@@ -38,6 +38,12 @@ namespace bandersnatch_vrfs {
 
   VrfInOut SecretKey::vrfInOut(const VrfInput &vrf_input) const {
     VrfInOut vrf_inout{};
+    vrf_inout.input[0] = '\x11';
+    vrf_inout.input[1] = '\x12';
+    vrf_inout.input[2] = '\x13';
+    vrf_inout.preout[0] = '\x01';
+    vrf_inout.preout[1] = '\x02';
+    vrf_inout.preout[2] = '\x03';
     bandersnatch_SecretKey_vrf_inout(secret_,
                                      vrf_input.data(),
                                      vrf_input.size(),
