@@ -26,30 +26,12 @@ namespace bandersnatch_vrfs {
     return public_.value();
   }
 
-  VrfPreOut SecretKey::vrfPreOut(const VrfInput &vrf_input) const {
-    VrfPreOut vrf_preout;
-    bandersnatch_SecretKey_vrf_preout(secret_,
-                                      vrf_input.data(),
-                                      vrf_input.size(),
-                                      vrf_preout.data(),
-                                      vrf_preout.size());
-    return vrf_preout;
+  VrfPreOut SecretKey::vrfPreOut(VrfInput vrf_input) const {
+    return bandersnatch_SecretKey_vrf_preout(secret_, vrf_input);
   }
 
-  VrfInOut SecretKey::vrfInOut(const VrfInput &vrf_input) const {
-    VrfInOut vrf_inout{};
-    vrf_inout.input[0] = '\x11';
-    vrf_inout.input[1] = '\x12';
-    vrf_inout.input[2] = '\x13';
-    vrf_inout.preout[0] = '\x01';
-    vrf_inout.preout[1] = '\x02';
-    vrf_inout.preout[2] = '\x03';
-    bandersnatch_SecretKey_vrf_inout(secret_,
-                                     vrf_input.data(),
-                                     vrf_input.size(),
-                                     reinterpret_cast<uint8_t *>(&vrf_inout),
-                                     sizeof(vrf_inout));
-    return vrf_inout;
+  VrfInOut SecretKey::vrfInOut(VrfInput vrf_input) const {
+    return bandersnatch_SecretKey_vrf_inout(secret_, vrf_input);
   }
 
 }  // namespace bandersnatch_vrfs

@@ -18,15 +18,10 @@
 extern crate bandersnatch_vrfs;
 extern crate core;
 
-use core::ffi::c_ulong;
-use core::ffi::c_void;
-use std::ops::Deref;
-use std::{ptr, slice};
-use bandersnatch_vrfs::{
-    CanonicalSerialize,
-    IntoVrfInput,
-    SecretKey,
-};
+use bandersnatch_vrfs::SecretKey;
+use std::alloc::{alloc, dealloc, Layout};
+use std::ptr::null;
+use std::slice;
 
 /*
 #[repr(C)]
@@ -88,31 +83,31 @@ pub struct Signature([u8; BANDERSNATCH_SIGNATURE_SIZE]);
 
 //const PREOUT_SERIALIZED_SIZE: c_ulong = 33;
 
-#[allow(unused_attributes)]
-#[no_mangle]
-pub unsafe extern "C" fn bandersnatch_keypair_from_seed(keypair_out: *mut u8, seed_ptr: *const u8) {
-    let seed = *(seed_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
-
-    let secret = SecretKey::from_seed(&seed);
-    let public = secret.to_public();
-
-    // Fake secret key
-    ptr::copy(
-        [0; BANDERSNATCH_SECRET_KEY_SIZE].as_ptr(),
-        keypair_out,
-        BANDERSNATCH_SECRET_KEY_SIZE as usize,
-    );
-
-    // Fake secret key
-    ptr::copy(seed_ptr, keypair_out, BANDERSNATCH_SECRET_KEY_SIZE as usize);
-
-    let x = slice::from_raw_parts_mut(
-        keypair_out.wrapping_add(BANDERSNATCH_SECRET_KEY_SIZE),
-        BANDERSNATCH_PUBLIC_KEY_SIZE as usize,
-    );
-
-    let _ = public.serialize(x);
-}
+// #[allow(unused_attributes)]
+// #[no_mangle]
+// pub unsafe extern "C" fn bandersnatch_keypair_from_seed(keypair_out: *mut u8, seed_ptr: *const u8) {
+//     let seed = *(seed_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
+//
+//     let secret = SecretKey::from_seed(&seed);
+//     let public = secret.to_public();
+//
+//     // Fake secret key
+//     ptr::copy(
+//         [0; BANDERSNATCH_SECRET_KEY_SIZE].as_ptr(),
+//         keypair_out,
+//         BANDERSNATCH_SECRET_KEY_SIZE as usize,
+//     );
+//
+//     // Fake secret key
+//     ptr::copy(seed_ptr, keypair_out, BANDERSNATCH_SECRET_KEY_SIZE as usize);
+//
+//     let x = slice::from_raw_parts_mut(
+//         keypair_out.wrapping_add(BANDERSNATCH_SECRET_KEY_SIZE),
+//         BANDERSNATCH_PUBLIC_KEY_SIZE as usize,
+//     );
+//
+//     let _ = public.serialize(x);
+// }
 
 // #[allow(unused_attributes)]
 // #[no_mangle]
@@ -154,35 +149,49 @@ pub enum bandersnatch_SecretKey {}
 #[allow(non_camel_case_types)]
 pub enum bandersnatch_VrfInput {}
 
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_VrfOutput {}
+
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_VrfPreOut {}
+
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_VrfInOut {}
+
 #[allow(unused_attributes)]
 #[no_mangle]
-pub unsafe extern "C" fn bandersnatch_SecretKey_destroy(secret_ptr: *mut bandersnatch_SecretKey) {
-    unsafe {
-        let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
-        let _ = (*secret).deref();
-    }
+pub unsafe extern "C" fn bandersnatch_SecretKey_destroy(secret_ptr: *const bandersnatch_SecretKey) {
+    let secret = secret_ptr as *const SecretKey;
+    let _ = *secret;
+    dealloc(secret_ptr as *mut u8, Layout::new::<SecretKey>())
 }
 
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_SecretKey_from_seed(
     seed_ptr: *const u8,
-) -> *mut bandersnatch_SecretKey {
+) -> *const bandersnatch_SecretKey {
     let seed = &*(seed_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
     let secret = SecretKey::from_seed(&seed);
-    let mut secret = Box::new(secret);
-    let ptr = &mut secret as *mut _ as *const c_void;
+
+    let ptr = alloc(Layout::new::<SecretKey>());
+    if ptr.is_null() {
+        return null();
+    }
+    let ptr = ptr as *mut SecretKey;
+
+    std::ptr::write(ptr, secret);
+
     ptr as *mut bandersnatch_SecretKey
 }
 
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_SecretKey_to_public(
-    secret_ptr: *mut bandersnatch_SecretKey,
+    secret_ptr: *const bandersnatch_SecretKey,
     public_out: *mut u8,
 ) {
-    let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
-    let secret = &*secret;
+    let secret = &*(secret_ptr as *const SecretKey);
 
     let public = secret.to_public();
 
@@ -194,70 +203,72 @@ pub unsafe extern "C" fn bandersnatch_SecretKey_to_public(
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_SecretKey_vrf_preout(
-    secret_ptr: *mut bandersnatch_SecretKey,
-    input_ptr: *const u8,
-    input_size: usize,
-    preout_ptr: *mut u8,
-    preout_size: usize,
-) {
-    let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
-    let secret = &*secret;
+    secret_ptr: *const bandersnatch_SecretKey,
+    input_ptr: *const bandersnatch_VrfInput,
+) -> *const bandersnatch_VrfPreOut {
+    let secret = &*(secret_ptr as *const SecretKey);
 
-    let input_ptr = input_ptr as *const _ as *const VrfInput;
-    let vrf_input = &*input_ptr;
+    let vrf_input = &*(input_ptr as *const VrfInput);
 
-    let preout_ptr = preout_ptr as *mut _ as *mut VrfPreOut;
-    let vrf_preout = &mut *preout_ptr;
+    let ptr = alloc(Layout::new::<VrfPreOut>());
+    if ptr.is_null() {
+        return null();
+    }
+    let ptr = ptr as *mut VrfPreOut;
 
-    vrf_preout.0 = secret.vrf_preout(&vrf_input).0;
+    let vrf_preout = secret.vrf_preout(vrf_input);
+
+    std::ptr::write(ptr, vrf_preout);
+
+    ptr as *mut bandersnatch_VrfPreOut
 }
-
-//vrf::VrfInOut vrf_inout(const vrf::VrfInput &input) const;
 
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_SecretKey_vrf_inout(
-    secret_ptr: *mut bandersnatch_SecretKey,
-    input_ptr: *const u8,
-    input_size: usize,
-    inout_ptr: *mut u8,
-    inout_size: usize,
-) {
-    let secret = secret_ptr as *mut c_void as *mut Box<SecretKey>;
-    let secret = &*secret;
+    secret_ptr: *const bandersnatch_SecretKey,
+    input_ptr: *const bandersnatch_VrfInput,
+) -> *const bandersnatch_VrfInOut {
+    let secret = &*(secret_ptr as *const SecretKey);
 
-    let input_ptr = input_ptr as *const _ as *const VrfInput;
-    let vrf_input = *input_ptr;
+    let vrf_input = *(input_ptr as *const VrfInput);
 
-    let inout_ptr = inout_ptr as *mut _ as *mut VrfInOut;
-    let mut vrf_inout = &mut *inout_ptr;
+    let ptr = alloc(Layout::new::<VrfInOut>());
+    if ptr.is_null() {
+        return null();
+    }
+    let ptr = ptr as *mut VrfInOut;
 
-    vrf_inout = &mut secret.vrf_inout(vrf_input);
+    let vrf_inout = secret.vrf_inout(vrf_input);
+
+    std::ptr::write(ptr, vrf_inout);
+
+    ptr as *mut bandersnatch_VrfInOut
 }
 
-#[allow(unused_attributes)]
-#[no_mangle]
-pub unsafe extern "C" fn bandersnatch_VrfInput(
-    vrfinput_out: *mut u8,
-    domain_ptr: *const u8,
-    domain_size: c_ulong,
-    data_ptr: *const u8,
-    data_size: c_ulong,
-) {
-    let domain = slice::from_raw_parts(domain_ptr, domain_size as usize);
-    let data = slice::from_raw_parts(data_ptr, data_size as usize);
-
-    let msg = bandersnatch_vrfs::Message {
-        domain: domain.as_ref(),
-        message: data.as_ref(),
-    };
-
-    let vrf_input = msg.into_vrf_input();
-
-    let out = slice::from_raw_parts_mut(vrfinput_out, vrf_input.0.compressed_size() as usize);
-
-    vrf_input
-        .0
-        .serialize_compressed(out)
-        .expect("Calling code must provide enough space");
-}
+// #[allow(unused_attributes)]
+// #[no_mangle]
+// pub unsafe extern "C" fn bandersnatch_VrfInput(
+//     vrfinput_out: *mut u8,
+//     domain_ptr: *const u8,
+//     domain_size: c_ulong,
+//     data_ptr: *const u8,
+//     data_size: c_ulong,
+// )  {
+//     let domain = slice::from_raw_parts(domain_ptr, domain_size as usize);
+//     let data = slice::from_raw_parts(data_ptr, data_size as usize);
+//
+//     let msg = bandersnatch_vrfs::Message {
+//         domain: domain.as_ref(),
+//         message: data.as_ref(),
+//     };
+//
+//     let vrf_input = msg.into_vrf_input();
+//
+//     let out = slice::from_raw_parts_mut(vrfinput_out, vrf_input.0.compressed_size() as usize);
+//
+//     vrf_input
+//         .0
+//         .serialize_compressed(out)
+//         .expect("Calling code must provide enough space");
+// }

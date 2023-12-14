@@ -5,37 +5,36 @@
 
 #pragma once
 
-#include <span>
 #include <cstdint>
 #include <optional>
+#include <span>
 
 struct bandersnatch_SecretKey;
+struct bandersnatch_VrfInput;
+struct bandersnatch_VrfPreOut;
+struct bandersnatch_VrfInOut;
 
 namespace bandersnatch_vrfs {
 
   using Seed = std::array<uint8_t, 32>;
   using Affine = std::array<uint8_t, 33>;
   using PublicKey = Affine;
-  using VrfInput = Affine;
-  using VrfOutput = Affine;
-  using VrfPreOut = Affine;
-  struct VrfInOut {
-    VrfInput input;
-    VrfPreOut preout;
-  };
+  using VrfInput = const bandersnatch_VrfInput *;
+  using VrfPreOut = const bandersnatch_VrfPreOut *;
+  using VrfInOut = const bandersnatch_VrfInOut *;
 
   class SecretKey {
    public:
-    explicit SecretKey(const Seed& seed);
+    explicit SecretKey(const Seed &seed);
 
     ~SecretKey();
 
     PublicKey publicKey() const;
-    VrfPreOut vrfPreOut(const VrfInput& vrf_input) const;
-    VrfInOut vrfInOut(const VrfInput& vrf_input) const;
+    VrfPreOut vrfPreOut(VrfInput vrf_input) const;
+    VrfInOut vrfInOut(VrfInput vrf_input) const;
 
    private:
-    bandersnatch_SecretKey *secret_;
+    const bandersnatch_SecretKey *secret_;
     std::optional<PublicKey> public_;
   };
 
