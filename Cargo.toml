@@ -8,17 +8,29 @@ build = "build.rs"
 [dependencies]
 # bandersnatch crypto
 bandersnatch_vrfs = { git = "https://github.com/w3f/ring-vrf", rev = "4831a70", default-features = false, features = ["substrate-curves"], optional = true }
+serde = "1.0.193"
 
 [features]
 default = ["std"]
 std = [
     "bandersnatch_vrfs/std",
+    "full_crypto",
 ]
 
 # This feature adds Bandersnatch crypto primitives.
 # It should not be used in production since the implementation and interface may still
 # be subject to significant changes.
 bandersnatch-experimental = ["bandersnatch_vrfs"]
+
+full_crypto = [
+#    "array-bytes",
+#    "blake2",
+#    "ed25519-zebra",
+#    "libsecp256k1",
+#    "secp256k1",
+#    "sp-core-hashing",
+#    "sp-runtime-interface/disable_target_static_assertions",
+]
 
 [build-dependencies]
 cbindgen = "0.26.0"
