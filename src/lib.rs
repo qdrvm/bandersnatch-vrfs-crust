@@ -540,111 +540,111 @@ pub unsafe extern "C" fn bandersnatch_PublicKey_verify_thin_vrf(
 //         .expect("Calling code must provide enough space");
 // }
 
-pub struct Pair {
-    secret: SecretKey,
-}
-
-pub type VrfIosVec<T> = Vec<T>;
-
-pub struct VrfOutput(pub bandersnatch_vrfs::VrfPreOut);
-
-pub struct VrfSignData {
-    /// Associated protocol transcript.
-    pub transcript: Transcript,
-    /// VRF inputs to be signed.
-    pub inputs: VrfIosVec<VrfInput>,
-}
-
-pub struct VrfSignature {
-    /// Transcript signature.
-    pub signature: Signature,
-    /// VRF (pre)outputs.
-    pub outputs: VrfIosVec<VrfOutput>,
-}
-
-fn vrf_sign_gen<const N: usize>(secret: &SecretKey, data: &VrfSignData) -> VrfSignature {
-    let ios = core::array::from_fn(|i| secret.vrf_inout(data.inputs[i].0));
-
-    let thin_signature: ThinVrfSignature<N> =
-        secret.sign_thin_vrf(data.transcript.clone(), &ios);
-
-    let outputs: Vec<_> = thin_signature.preouts.into_iter().map(VrfOutput).collect();
-    let outputs = VrfIosVec::truncate_from(outputs);
-
-    let mut signature =
-        VrfSignature { signature: Signature([0; BANDERSNATCH_SIGNATURE_SIZE]), outputs };
-
-    thin_signature
-        .proof
-        .serialize_compressed(signature.signature.0.as_mut_slice())
-        .expect("serialization length is constant and checked by test; qed");
-
-    signature
-}
-
-fn vrf_sign(secret: &SecretKey, data: &VrfSignData) -> VrfSignature {
-    const _: () = assert!(BANDERSNATCH_MAX_IOS_COUNT == 3, "`BANDERSNATCH_MAX_IOS_COUNT` expected to be 3");
-    // Workaround to overcome backend signature generic over the number of IOs.
-    match data.inputs.len() {
-        0 => vrf_sign_gen::<0>(&secret, data),
-        1 => vrf_sign_gen::<1>(&secret, data),
-        2 => vrf_sign_gen::<2>(&secret, data),
-        3 => vrf_sign_gen::<3>(&secret, data),
-        _ => unreachable!(),
-    }
-}
-
-fn sign(secret: &SecretKey, data: &[u8]) -> Signature {
-    let data = VrfSignData::new_unchecked(SIGNING_CTX, &[data], None);
-    vrf_sign(&secret, &data).signature
-}
-
-pub unsafe extern "C" fn bandersnatch_sign(
-    secret_ptr: *const u8,
-    message_ptr: *const u8,
-    message_size: usize,
-    signature_ptr: *mut u8,
-    signature_size: usize,
-) {
-    let secret = &*(secret_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
-    let secret = SecretKey::from_seed(secret);
-
-    let message = slice::from_raw_parts(message_ptr, message_size);
-
-    let signature = sign(&secret, message);
-
-    let signature_out = slice::from_raw_parts_mut(signature_ptr, signature_size);
-
-    signature_out.copy_from_slice(&signature.0);
-}
-
-
-
-
-fn verify<M: AsRef<[u8]>>(signature: &Signature, data: M, public: &Public) -> bool {
-    // let data = vrf::VrfSignData::new_unchecked(SIGNING_CTX, &[data.as_ref()], None);
-    // let signature = vrf::VrfSignature {
-    //     signature: *signature,
-    //     outputs: vrf::VrfIosVec::default(),
-    // };
-    public.vrf_verify(&data, &signature)
-}
-
-pub unsafe extern "C" fn bandersnatch_verify(
-    secret_ptr: *const u8,
-    message_ptr: *const u8,
-    message_size: usize,
-    signature_ptr: *mut u8,
-    signature_size: usize,
-) -> bool {
-    let secret = &*(secret_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
-    let secret = SecretKey::from_seed(secret);
-
-    let message = slice::from_raw_parts(message_ptr, message_size);
-
-    let signature = sign(&secret, message);
-
-    let signature_out = slice::from_raw_parts_mut(signature_ptr, signature_size);
-
-    signature_out.copy_from_slice(&signature.0);
-}
+// pub struct Pair {
+//     secret: SecretKey,
+// }
+//
+// pub type VrfIosVec<T> = Vec<T>;
+//
+// pub struct VrfOutput(pub bandersnatch_vrfs::VrfPreOut);
+//
+// pub struct VrfSignData {
+//     /// Associated protocol transcript.
+//     pub transcript: Transcript,
+//     /// VRF inputs to be signed.
+//     pub inputs: VrfIosVec<VrfInput>,
+// }
+//
+// pub struct VrfSignature {
+//     /// Transcript signature.
+//     pub signature: Signature,
+//     /// VRF (pre)outputs.
+//     pub outputs: VrfIosVec<VrfOutput>,
+// }
+//
+// fn vrf_sign_gen<const N: usize>(secret: &SecretKey, data: &VrfSignData) -> VrfSignature {
+//     let ios = core::array::from_fn(|i| secret.vrf_inout(data.inputs[i].0));
+//
+//     let thin_signature: ThinVrfSignature<N> =
+//         secret.sign_thin_vrf(data.transcript.clone(), &ios);
+//
+//     let outputs: Vec<_> = thin_signature.preouts.into_iter().map(VrfOutput).collect();
+//     let outputs = VrfIosVec::truncate_from(outputs);
+//
+//     let mut signature =
+//         VrfSignature { signature: Signature([0; BANDERSNATCH_SIGNATURE_SIZE]), outputs };
+//
+//     thin_signature
+//         .proof
+//         .serialize_compressed(signature.signature.0.as_mut_slice())
+//         .expect("serialization length is constant and checked by test; qed");
+//
+//     signature
+// }
+//
+// fn vrf_sign(secret: &SecretKey, data: &VrfSignData) -> VrfSignature {
+//     const _: () = assert!(BANDERSNATCH_MAX_IOS_COUNT == 3, "`BANDERSNATCH_MAX_IOS_COUNT` expected to be 3");
+//     // Workaround to overcome backend signature generic over the number of IOs.
+//     match data.inputs.len() {
+//         0 => vrf_sign_gen::<0>(&secret, data),
+//         1 => vrf_sign_gen::<1>(&secret, data),
+//         2 => vrf_sign_gen::<2>(&secret, data),
+//         3 => vrf_sign_gen::<3>(&secret, data),
+//         _ => unreachable!(),
+//     }
+// }
+//
+// fn sign(secret: &SecretKey, data: &[u8]) -> Signature {
+//     let data = VrfSignData::new_unchecked(SIGNING_CTX, &[data], None);
+//     vrf_sign(&secret, &data).signature
+// }
+//
+// pub unsafe extern "C" fn bandersnatch_sign(
+//     secret_ptr: *const u8,
+//     message_ptr: *const u8,
+//     message_size: usize,
+//     signature_ptr: *mut u8,
+//     signature_size: usize,
+// ) {
+//     let secret = &*(secret_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
+//     let secret = SecretKey::from_seed(secret);
+//
+//     let message = slice::from_raw_parts(message_ptr, message_size);
+//
+//     let signature = sign(&secret, message);
+//
+//     let signature_out = slice::from_raw_parts_mut(signature_ptr, signature_size);
+//
+//     signature_out.copy_from_slice(&signature.0);
+// }
+//
+//
+//
+//
+// fn verify<M: AsRef<[u8]>>(signature: &Signature, data: M, public: &Public) -> bool {
+//     // let data = vrf::VrfSignData::new_unchecked(SIGNING_CTX, &[data.as_ref()], None);
+//     // let signature = vrf::VrfSignature {
+//     //     signature: *signature,
+//     //     outputs: vrf::VrfIosVec::default(),
+//     // };
+//     public.vrf_verify(&data, &signature)
+// }
+//
+// pub unsafe extern "C" fn bandersnatch_verify(
+//     secret_ptr: *const u8,
+//     message_ptr: *const u8,
+//     message_size: usize,
+//     signature_ptr: *mut u8,
+//     signature_size: usize,
+// ) -> bool {
+//     let secret = &*(secret_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
+//     let secret = SecretKey::from_seed(secret);
+//
+//     let message = slice::from_raw_parts(message_ptr, message_size);
+//
+//     let signature = sign(&secret, message);
+//
+//     let signature_out = slice::from_raw_parts_mut(signature_ptr, signature_size);
+//
+//     signature_out.copy_from_slice(&signature.0);
+// }

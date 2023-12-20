@@ -102,22 +102,24 @@ namespace bandersnatch_vrfs {
   }
 
   PublicKey::~PublicKey() {
-    bandersnatch_PublicKey_destroy(ptr_);
+//    bandersnatch_PublicKey_destroy(ptr_);
   }
 
-  PublicKey::PublicKey(const bandersnatch_PublicKey *ptr) : ptr_(ptr) {}
+  PublicKey::PublicKey(const bandersnatch_PublicKey *ptr)
+//  : ptr_(ptr)
+  {}
 
-  void PublicKey::serialize(BytesOut out) const {
-    assert(out.size() == BANDERSNATCH_PUBLIC_KEY_SIZE);
-    bandersnatch_PublicKey_serialize(ptr_, out.data());
-  }
+//  void PublicKey::serialize(BytesOut out) const {
+//    assert(out.size() == BANDERSNATCH_PUBLIC_KEY_SIZE);
+//    bandersnatch_PublicKey_serialize(ptr_, out.data());
+//  }
 
   bool PublicKey::verifyThinVrf(Transcript &transcript,
                                 VrfInput *inputs,
                                 size_t size,
                                 ThinVrfSignature *signature) const {
-    return bandersnatch_PublicKey_verify_thin_vrf(
-        ptr_, transcript.ptr(), inputs, size, signature->ptr());
+//    return bandersnatch_PublicKey_verify_thin_vrf(
+//        ptr_, transcript.ptr(), inputs, size, signature->ptr());
   }
 
 }  // namespace bandersnatch_vrfs
