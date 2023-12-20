@@ -52,6 +52,41 @@ if(NOT TARGET bandersnatch_vrfs_crust::bandersnatch_vrfs_crust)
         )
 endif()
 
+if(NOT TARGET bandersnatch_vrfs_crust::bandersnatch_vrfs_crust)
+    add_library(bandersnatch_vrfs_crust::bandersnatch_vrfs_crust STATIC IMPORTED GLOBAL)
+
+    if(EXISTS ${_IMPORT_PREFIX}/${CMAKE_INSTALL_LIBDIR}/${static_lib_name})
+        if (APPLE)
+            # on apple we need to link Security
+            find_library(Security Security)
+            find_package_handle_standard_args(bandersnatch_vrfs_crust
+                    REQUIRED_VARS Security
+            )
+            set_target_properties(bandersnatch_vrfs_crust::bandersnatch_vrfs_crust PROPERTIES
+                    INTERFACE_LINK_LIBRARIES ${Security}
+            )
+        elseif (UNIX)
+            # on Linux we need to link pthread
+            target_link_libraries(bandersnatch_vrfs_crust::bandersnatch_vrfs_crust INTERFACE
+                    pthread
+                    -Wl,--no-as-needed
+                    dl
+            )
+        else ()
+            message(ERROR "You've built static lib, it may not link on this platform. Come here and fix.")
+        endif ()
+    endif()
+
+    target_link_libraries(bandersnatch_vrfs_crust::bandersnatch_vrfs_crust INTERFACE
+        bandersnatch_vrfs_cpp
+    )
+
+    set_target_properties(bandersnatch_vrfs_crust::bandersnatch_vrfs_crust PROPERTIES
+            INTERFACE_INCLUDE_DIRECTORIES ${include_path}
+            IMPORTED_LOCATION ${lib_path}
+    )
+endif()
+
 unset(shared_lib_name)
 unset(static_lib_name)
 unset(shared_lib_path)
