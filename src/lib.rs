@@ -57,8 +57,8 @@ pub const SIGNING_CTX: &[u8] = b"BandersnatchSigningContext";
 #[cfg(feature = "full_crypto")]
 const SEED_SERIALIZED_SIZE: usize = 32;
 
-const PUBLIC_SERIALIZED_SIZE: usize = 33;
-const SIGNATURE_SERIALIZED_SIZE: usize = 65;
+pub const PUBLIC_SERIALIZED_SIZE: usize = 33;
+pub const SIGNATURE_SERIALIZED_SIZE: usize = 65;
 // const PREOUT_SERIALIZED_SIZE: usize = 33;
 //
 // /// Bandersnatch public key.
@@ -242,8 +242,8 @@ pub trait VrfCrypto {
 
 /// VRF Secret Key.
 pub trait VrfSecret: VrfCrypto {
-    // /// Get VRF-specific output .
-    // fn vrf_output(&self, data: &Self::VrfInput) -> Self::VrfOutput;
+    /// Get VRF-specific output .
+    fn vrf_output(&self, data: &Self::VrfInput) -> Self::VrfOutput;
 
     /// Sign VRF-specific data.
     fn vrf_sign(&self, input: &Self::VrfSignData) -> Self::VrfSignature;
@@ -360,7 +360,9 @@ pub mod vrf {
     use bandersnatch_vrfs::{
         CanonicalDeserialize,
         CanonicalSerialize,
-        //IntoVrfInput, Message, PublicKey,
+        IntoVrfInput,
+        Message,
+        // PublicKey,
         ThinVrfSignature,
         Transcript,
     };
@@ -377,7 +379,7 @@ pub mod vrf {
     ///
     /// The number is quite arbitrary and chosen to fulfill the use cases found so far.
     /// If required it can be extended in the future.
-    pub const MAX_VRF_IOS: u32 = 3;
+    const MAX_VRF_IOS: u32 = 3;
 
     /// Bounded vector used for VRF inputs and outputs.
     ///
@@ -387,17 +389,17 @@ pub mod vrf {
     /// VRF input to construct a [`VrfOutput`] instance and embeddable in [`VrfSignData`].
     #[derive(Clone, Debug)]
     pub struct VrfInput(pub(super) bandersnatch_vrfs::VrfInput);
-    //
-    //     impl VrfInput {
-    //         /// Construct a new VRF input.
-    //         pub fn new(domain: impl AsRef<[u8]>, data: impl AsRef<[u8]>) -> Self {
-    //             let msg = Message {
-    //                 domain: domain.as_ref(),
-    //                 message: data.as_ref(),
-    //             };
-    //             VrfInput(msg.into_vrf_input())
-    //         }
-    //     }
+
+    impl VrfInput {
+        /// Construct a new VRF input.
+        pub fn new(domain: impl AsRef<[u8]>, data: impl AsRef<[u8]>) -> Self {
+            let msg = Message {
+                domain: domain.as_ref(),
+                message: data.as_ref(),
+            };
+            VrfInput(msg.into_vrf_input())
+        }
+    }
 
     /// VRF (pre)output derived from [`VrfInput`] using a [`VrfSecret`].
     ///
@@ -470,27 +472,27 @@ pub mod vrf {
     }
 
     impl VrfSignData {
-        //         /// Construct a new data to be signed.
-        //         ///
-        //         /// Fails if the `inputs` iterator yields more elements than [`MAX_VRF_IOS`]
-        //         ///
-        //         /// Refer to [`VrfSignData`] for details about transcript and inputs.
-        //         pub fn new(
-        //             transcript_label: &'static [u8],
-        //             transcript_data: impl IntoIterator<Item = impl AsRef<[u8]>>,
-        //             inputs: impl IntoIterator<Item = VrfInput>,
-        //         ) -> Result<Self, ()> {
-        //             let inputs: Vec<VrfInput> = inputs.into_iter().collect();
-        //             if inputs.len() > MAX_VRF_IOS as usize {
-        //                 return Err(());
-        //             }
-        //             Ok(Self::new_unchecked(
-        //                 transcript_label,
-        //                 transcript_data,
-        //                 inputs,
-        //             ))
-        //         }
-        //
+        // /// Construct a new data to be signed.
+        // ///
+        // /// Fails if the `inputs` iterator yields more elements than [`MAX_VRF_IOS`]
+        // ///
+        // /// Refer to [`VrfSignData`] for details about transcript and inputs.
+        // pub fn new(
+        //     transcript_label: &'static [u8],
+        //     transcript_data: impl IntoIterator<Item = impl AsRef<[u8]>>,
+        //     inputs: impl IntoIterator<Item = VrfInput>,
+        // ) -> Result<Self, ()> {
+        //     let inputs: Vec<VrfInput> = inputs.into_iter().collect();
+        //     if inputs.len() > MAX_VRF_IOS as usize {
+        //         return Err(());
+        //     }
+        //     Ok(Self::new_unchecked(
+        //         transcript_label,
+        //         transcript_data,
+        //         inputs,
+        //     ))
+        // }
+
         /// Construct a new data to be signed.
         ///
         /// At most the first [`MAX_VRF_IOS`] elements of `inputs` are used.
@@ -510,28 +512,28 @@ pub mod vrf {
             VrfSignData { transcript, inputs }
         }
 
-        //         /// Append a message to the transcript.
-        //         pub fn push_transcript_data(&mut self, data: &[u8]) {
-        //             self.transcript.append(data);
-        //         }
+        // /// Append a message to the transcript.
+        // pub fn push_transcript_data(&mut self, data: &[u8]) {
+        //     self.transcript.append(data);
+        // }
         //
-        //         /// Tries to append a [`VrfInput`] to the vrf inputs list.
-        //         ///
-        //         /// On failure, returns back the [`VrfInput`] parameter.
-        //         pub fn push_vrf_input(&mut self, input: VrfInput) -> Result<(), VrfInput> {
-        //             self.inputs.try_push(input)
-        //         }
+        // /// Tries to append a [`VrfInput`] to the vrf inputs list.
+        // ///
+        // /// On failure, returns back the [`VrfInput`] parameter.
+        // pub fn push_vrf_input(&mut self, input: VrfInput) -> Result<(), VrfInput> {
+        //     self.inputs.try_push(input)
+        // }
         //
-        //         /// Get the challenge associated to the `transcript` contained within the signing data.
-        //         ///
-        //         /// Ignores the vrf inputs and outputs.
-        //         pub fn challenge<const N: usize>(&self) -> [u8; N] {
-        //             let mut output = [0; N];
-        //             let mut transcript = self.transcript.clone();
-        //             let mut reader = transcript.challenge(b"bandersnatch challenge");
-        //             reader.read_bytes(&mut output);
-        //             output
-        //         }
+        // /// Get the challenge associated to the `transcript` contained within the signing data.
+        // ///
+        // /// Ignores the vrf inputs and outputs.
+        // pub fn challenge<const N: usize>(&self) -> [u8; N] {
+        //     let mut output = [0; N];
+        //     let mut transcript = self.transcript.clone();
+        //     let mut reader = transcript.challenge(b"bandersnatch challenge");
+        //     reader.read_bytes(&mut output);
+        //     output
+        // }
     }
 
     /// VRF signature.
@@ -570,10 +572,10 @@ pub mod vrf {
             }
         }
 
-        //         fn vrf_output(&self, input: &Self::VrfInput) -> Self::VrfOutput {
-        //             let output = self.secret.vrf_preout(&input.0);
-        //             VrfOutput(output)
-        //         }
+        fn vrf_output(&self, input: &Self::VrfInput) -> Self::VrfOutput {
+            let output = self.secret.vrf_preout(&input.0);
+            VrfOutput(output)
+        }
     }
 
     impl VrfCrypto for Public {
@@ -611,7 +613,7 @@ pub mod vrf {
 
             let outputs: Vec<_> = thin_signature
                 .preouts
-                .into_iter()
+                .iter()
                 .map(|f| VrfOutput(f.clone()))
                 .collect();
             //let outputs = VrfIosVec::truncate_from(outputs);
@@ -673,21 +675,21 @@ pub mod vrf {
         }
     }
 
-    //     impl VrfOutput {
-    //         /// Generate an arbitrary number of bytes from the given `context` and VRF `input`.
-    //         pub fn make_bytes<const N: usize>(
-    //             &self,
-    //             context: &'static [u8],
-    //             input: &VrfInput,
-    //         ) -> [u8; N] {
-    //             let transcript = Transcript::new_labeled(context);
-    //             let inout = bandersnatch_vrfs::VrfInOut {
-    //                 input: input.0,
-    //                 preoutput: self.0,
-    //             };
-    //             inout.vrf_output_bytes(transcript)
-    //         }
-    //     }
+    impl VrfOutput {
+        /// Generate an arbitrary number of bytes from the given `context` and VRF `input`.
+        pub fn make_bytes<const N: usize>(
+            &self,
+            context: &'static [u8],
+            input: &VrfInput,
+        ) -> [u8; N] {
+            let transcript = Transcript::new_labeled(context);
+            let inout = bandersnatch_vrfs::VrfInOut {
+                input: input.0,
+                preoutput: self.0,
+            };
+            inout.vrf_output_bytes(transcript)
+        }
+    }
 }
 
 // /// Bandersnatch Ring-VRF types and operations.
@@ -1353,6 +1355,9 @@ use bandersnatch_vrfs::PublicKey;
 use ptr::copy;
 use slice::from_raw_parts;
 use slice::from_raw_parts_mut;
+use std::ffi::c_void;
+use std::ops::Deref;
+use vrf::VrfInput;
 
 #[allow(unused_attributes)]
 #[no_mangle]
@@ -1422,4 +1427,122 @@ pub unsafe extern "C" fn bandersnatch_verify(
     let signature = Signature(signature);
 
     Pair::verify(&signature, message, &public)
+}
+
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_VrfInput {}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_input(
+    domain_ptr: *const u8,
+    domain_size: usize,
+    message_ptr: *const u8,
+    message_size: usize,
+) -> *mut bandersnatch_VrfInput {
+    let domain = slice::from_raw_parts(domain_ptr, domain_size);
+    let message = slice::from_raw_parts(message_ptr, message_size);
+
+    // make VrfInput in heap
+    let input = Box::new(vrf::VrfInput::new(domain, message));
+
+    // leak for static lifetime
+    let input = Box::<vrf::VrfInput>::leak(input);
+
+    let input = std::ptr::addr_of!(input) as *mut bandersnatch_VrfInput;
+
+    input
+}
+
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_VrfOutput {}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_output(
+    secret_ptr: *const u8,
+    input_ptr: *const bandersnatch_VrfInput,
+) -> *mut bandersnatch_VrfOutput {
+    let seed = *(secret_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
+
+    let secret = SecretKey::from_seed(&seed);
+
+    let pair = Pair { secret, seed };
+
+    let input = &*(input_ptr as *const vrf::VrfInput);
+
+    let output = pair.vrf_output(input);
+
+    let output = std::ptr::addr_of!(output) as *mut bandersnatch_VrfOutput;
+
+    output
+}
+
+#[allow(non_camel_case_types)]
+pub enum bandersnatch_VrfSignData {}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_sign_data(
+    transcript_label_ptr: *const u8,
+    transcript_label_size: usize,
+    transcript_data_ptrs: *const *const u8,
+    transcript_data_sizes: *const usize,
+    transcript_data_size: usize,
+    inputs_ptr: *const *const bandersnatch_VrfInput,
+    inputs_size: usize,
+) -> *mut bandersnatch_VrfSignData {
+    let transcript_label = slice::from_raw_parts(transcript_label_ptr, transcript_label_size);
+
+    let transcript_data_ptrs = slice::from_raw_parts(transcript_data_ptrs, transcript_data_size);
+    let transcript_data_sizes = slice::from_raw_parts(transcript_data_sizes, transcript_data_size);
+
+    let transcript_data = transcript_data_ptrs
+        .iter()
+        .zip(transcript_data_sizes.iter())
+        .map(|(ptr, size)| slice::from_raw_parts(*ptr, *size as _));
+
+    let inputs = slice::from_raw_parts(inputs_ptr, inputs_size);
+
+    let inputs: Vec<_> = inputs
+        .iter()
+        .map(|ptr| (*(*ptr as *mut VrfInput)).clone())
+        .collect();
+
+    let sign_data = vrf::VrfSignData::new_unchecked(transcript_label, transcript_data, inputs);
+
+    // make VrfInput in heap
+    let sign_data = Box::new(sign_data);
+
+    // leak for static lifetime
+    let sign_data = Box::<vrf::VrfSignData>::leak(sign_data);
+
+    let sign_data = std::ptr::addr_of!(sign_data) as *mut bandersnatch_VrfSignData;
+
+    sign_data
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_make_bytes(
+    input_ptr: *const bandersnatch_VrfInput,
+    output_ptr: *const bandersnatch_VrfOutput,
+    bytes_ptr: *mut u8,
+    bytes_size: usize,
+) {
+    let input = &*(input_ptr as *const vrf::VrfInput);
+    let output = &*(output_ptr as *const vrf::VrfOutput);
+    let bytes = slice::from_raw_parts_mut(bytes_ptr, bytes_size);
+
+    match bytes_size {
+        16 => {
+            let x = output.make_bytes::<16>(b"ticket-id", input);
+            bytes.copy_from_slice(&x);
+        }
+        32 => {
+            let x = output.make_bytes::<32>(b"ticket-id", input);
+            bytes.copy_from_slice(&x);
+        }
+        _ => panic!(),
+    };
 }
