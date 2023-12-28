@@ -22,6 +22,7 @@
 
 extern crate bandersnatch_vrfs;
 extern crate codec;
+extern crate core;
 
 use std::{ptr, slice};
 // #[cfg(feature = "serde")]
@@ -37,8 +38,13 @@ use std::{ptr, slice};
 // use sp_std::alloc::{format, string::String};
 //
 #[cfg(feature = "full_crypto")]
-use bandersnatch_vrfs::{CanonicalSerialize, SecretKey, PUBLIC_KEY_LENGTH};
+use bandersnatch_vrfs::{
+    CanonicalSerialize,
+    SecretKey,
+    // PUBLIC_KEY_LENGTH
+};
 use codec::Decode;
+// use codec::Encode;
 // use scale_info::TypeInfo;
 //
 // use sp_runtime_interface::pass_by::PassByInner;
@@ -49,15 +55,15 @@ use codec::Decode;
 
 /// Context used to produce a plain signature without any VRF input/output.
 #[cfg(feature = "full_crypto")]
-pub const SIGNING_CTX: &[u8] = b"BandersnatchSigningContext";
+const SIGNING_CTX: &[u8] = b"BandersnatchSigningContext";
 
 #[cfg(feature = "full_crypto")]
 const SEED_SERIALIZED_SIZE: usize = 32;
 
-pub const PUBLIC_SERIALIZED_SIZE: usize = 33;
-pub const SIGNATURE_SERIALIZED_SIZE: usize = 65;
-// const PREOUT_SERIALIZED_SIZE: usize = 33;
-//
+const PUBLIC_SERIALIZED_SIZE: usize = 33;
+const SIGNATURE_SERIALIZED_SIZE: usize = 65;
+const PREOUT_SERIALIZED_SIZE: usize = 33;
+
 // /// Bandersnatch public key.
 // #[cfg_attr(feature = "full_crypto", derive(Hash))]
 // #[derive(
@@ -363,6 +369,9 @@ pub mod vrf {
         ThinVrfSignature,
         Transcript,
     };
+    use codec::EncodeLike;
+    use Decode;
+    use Encode;
     use Pair;
     use Public;
     use PublicKey;
@@ -370,6 +379,7 @@ pub mod vrf {
     use VrfCrypto;
     use VrfPublic;
     use VrfSecret;
+    use PREOUT_SERIALIZED_SIZE;
     use SIGNATURE_SERIALIZED_SIZE;
 
     /// Max number of inputs/outputs which can be handled by the VRF signing procedures.
@@ -406,28 +416,28 @@ pub mod vrf {
     #[derive(Clone, Debug, PartialEq, Eq)]
     pub struct VrfOutput(pub(super) bandersnatch_vrfs::VrfPreOut);
 
-    //     impl Encode for VrfOutput {
-    //         fn encode(&self) -> Vec<u8> {
-    //             let mut bytes = [0; PREOUT_SERIALIZED_SIZE];
-    //             self.0
-    //                 .serialize_compressed(bytes.as_mut_slice())
-    //                 .expect("serialization length is constant and checked by test; qed");
-    //             bytes.encode()
-    //         }
-    //     }
-    //
-    //     impl Decode for VrfOutput {
-    //         fn decode<R: codec::Input>(i: &mut R) -> Result<Self, codec::Error> {
-    //             let buf = <[u8; PREOUT_SERIALIZED_SIZE]>::decode(i)?;
-    //             let preout =
-    //                 bandersnatch_vrfs::VrfPreOut::deserialize_compressed_unchecked(buf.as_slice())
-    //                     .map_err(|_| "vrf-preout decode error: bad preout")?;
-    //             Ok(VrfOutput(preout))
-    //         }
-    //     }
-    //
-    //     impl EncodeLike for VrfOutput {}
-    //
+    impl Encode for VrfOutput {
+        fn encode(&self) -> Vec<u8> {
+            let mut bytes = [0; PREOUT_SERIALIZED_SIZE];
+            self.0
+                .serialize_compressed(bytes.as_mut_slice())
+                .expect("serialization length is constant and checked by test; qed");
+            bytes.encode()
+        }
+    }
+
+    impl Decode for VrfOutput {
+        fn decode<R: codec::Input>(i: &mut R) -> Result<Self, codec::Error> {
+            let buf = <[u8; PREOUT_SERIALIZED_SIZE]>::decode(i)?;
+            let preout =
+                bandersnatch_vrfs::VrfPreOut::deserialize_compressed_unchecked(buf.as_slice())
+                    .map_err(|_| "vrf-preout decode error: bad preout")?;
+            Ok(VrfOutput(preout))
+        }
+    }
+
+    impl EncodeLike for VrfOutput {}
+
     //     impl MaxEncodedLen for VrfOutput {
     //         fn max_encoded_len() -> usize {
     //             <[u8; PREOUT_SERIALIZED_SIZE]>::max_encoded_len()
@@ -520,17 +530,17 @@ pub mod vrf {
         // pub fn push_vrf_input(&mut self, input: VrfInput) -> Result<(), VrfInput> {
         //     self.inputs.try_push(input)
         // }
-        //
-        // /// Get the challenge associated to the `transcript` contained within the signing data.
-        // ///
-        // /// Ignores the vrf inputs and outputs.
-        // pub fn challenge<const N: usize>(&self) -> [u8; N] {
-        //     let mut output = [0; N];
-        //     let mut transcript = self.transcript.clone();
-        //     let mut reader = transcript.challenge(b"bandersnatch challenge");
-        //     reader.read_bytes(&mut output);
-        //     output
-        // }
+
+        /// Get the challenge associated to the `transcript` contained within the signing data.
+        ///
+        /// Ignores the vrf inputs and outputs.
+        pub fn challenge<const N: usize>(&self) -> [u8; N] {
+            let mut output = [0; N];
+            let mut transcript = self.transcript.clone();
+            let mut reader = transcript.challenge(b"bandersnatch challenge");
+            reader.read_bytes(&mut output);
+            output
+        }
     }
 
     /// VRF signature.
@@ -894,6 +904,7 @@ pub mod ring_vrf {
 
     /// Ring VRF signature.
     // #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, MaxEncodedLen, TypeInfo)]
+    #[derive(Encode, Decode)]
     pub struct RingVrfSignature {
         /// Ring signature.
         pub signature: [u8; RING_SIGNATURE_SERIALIZED_SIZE],
@@ -1359,19 +1370,20 @@ pub const BANDERSNATCH_SECRET_KEY_SIZE: usize = BANDERSNATCH_SEED_SIZE;
 pub const BANDERSNATCH_PUBLIC_KEY_SIZE: usize = 33; // PUBLIC_KEY_LENGTH
 pub const BANDERSNATCH_SIGNATURE_SIZE: usize = 65; // SIGNATURE_SERIALIZED_SIZE
 pub const BANDERSNATCH_RING_SIGNATURE_SIZE: usize = 755; //RING_SIGNATURE_SERIALIZED_SIZE
+pub const BANDERSNATCH_PREOUT_SIZE: usize = 33; //PREOUT_SERIALIZED_SIZE
 
-use bandersnatch_vrfs::bandersnatch::SWAffine;
+//use bandersnatch_vrfs::bandersnatch::SWAffine;
 use bandersnatch_vrfs::ring::RingProver;
 use bandersnatch_vrfs::scale::Encode;
+//use bandersnatch_vrfs::vrf::VrfPreOut;
 use bandersnatch_vrfs::PublicKey;
-use ptr::copy;
-use ring_vrf::{RingContext, RING_SIGNATURE_SERIALIZED_SIZE};
-use slice::from_raw_parts;
-use slice::from_raw_parts_mut;
-use std::ffi::c_void;
-use std::ops::Deref;
-use std::ptr::{null, null_mut};
-use vrf::{VrfInput, VrfSignData};
+//use ptr::copy;
+// use ring_vrf::RingContext;
+use ring_vrf::{RingVrfSignature, RING_SIGNATURE_SERIALIZED_SIZE};
+// use slice::from_raw_parts;
+// use slice::from_raw_parts_mut;
+use std::ptr::null;
+use vrf::{VrfInput, VrfOutput, VrfSignData};
 
 #[allow(unused_attributes)]
 #[no_mangle]
@@ -1427,18 +1439,18 @@ pub unsafe extern "C" fn bandersnatch_sign(
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_verify(
-    public_ptr: *const u8,
+    signature_ptr: *const u8,
     message_ptr: *const u8,
     message_size: usize,
-    signature_ptr: *const u8,
+    public_ptr: *const u8,
 ) -> bool {
-    let public = *(public_ptr as *const [u8; BANDERSNATCH_PUBLIC_KEY_SIZE]);
-    let public = Public::unchecked_from(public);
+    let signature = *(signature_ptr as *const [u8; BANDERSNATCH_SIGNATURE_SIZE]);
+    let signature = Signature(signature);
 
     let message = slice::from_raw_parts(message_ptr, message_size);
 
-    let signature = *(signature_ptr as *const [u8; BANDERSNATCH_SIGNATURE_SIZE]);
-    let signature = Signature(signature);
+    let public = *(public_ptr as *const [u8; BANDERSNATCH_PUBLIC_KEY_SIZE]);
+    let public = Public::unchecked_from(public);
 
     Pair::verify(&signature, message, &public)
 }
@@ -1492,6 +1504,37 @@ pub unsafe extern "C" fn bandersnatch_vrf_output(
     output
 }
 
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_output_encode(
+    output_ptr: *const bandersnatch_VrfOutput,
+    out_ptr: *mut u8,
+) {
+    let output = &*(output_ptr as *const vrf::VrfOutput);
+
+    let encoded = output.0.encode();
+    let _size = encoded.len();
+
+    ptr::copy(encoded.as_ptr(), out_ptr, PREOUT_SERIALIZED_SIZE as usize);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_output_decode(
+    encoded_ptr: *mut u8,
+) -> *const bandersnatch_VrfOutput {
+    let encoded = &*(encoded_ptr as *mut [u8; 65]);
+
+    let output = match VrfOutput::decode(&mut encoded.as_slice()) {
+        Ok(x) => x,
+        Err(_) => return null(),
+    };
+
+    let output = std::ptr::addr_of!(output) as *mut bandersnatch_VrfOutput;
+
+    output
+}
+
 #[allow(non_camel_case_types)]
 pub enum bandersnatch_VrfSignData {}
 
@@ -1538,23 +1581,110 @@ pub unsafe extern "C" fn bandersnatch_vrf_sign_data(
 
 #[allow(unused_attributes)]
 #[no_mangle]
+pub unsafe extern "C" fn bandersnatch_sign_data_challenge(
+    sign_data_ptr: *const bandersnatch_VrfSignData,
+    bytes_ptr: *mut u8,
+    bytes_size: usize,
+) {
+    let sign_data = &*(sign_data_ptr as *const vrf::VrfSignData);
+    let bytes = slice::from_raw_parts_mut(bytes_ptr, bytes_size);
+
+    match bytes_size {
+        16 => {
+            let x = sign_data.challenge::<16>();
+            bytes.copy_from_slice(&x);
+        }
+        32 => {
+            let x = sign_data.challenge::<32>();
+            bytes.copy_from_slice(&x);
+        }
+        _ => panic!(),
+    };
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_sign(
+    secret_ptr: *const u8,
+    sign_data_ptr: *const bandersnatch_VrfSignData,
+    signature_out: *mut u8,
+) {
+    let seed = *(secret_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
+
+    let secret = SecretKey::from_seed(&seed);
+
+    let pair = Pair { secret, seed };
+
+    let sign_data = &*(sign_data_ptr as *const vrf::VrfSignData);
+
+    let signature = pair.vrf_sign(&sign_data).signature;
+
+    ptr::copy(
+        signature.0.as_ptr(),
+        signature_out,
+        BANDERSNATCH_SIGNATURE_SIZE as usize,
+    );
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_verify(
+    signature_ptr: *const u8,
+    signature_size: usize,
+    sign_data_ptr: *const bandersnatch_VrfSignData,
+    public_ptr: *const bandersnatch_VrfSignData,
+) {
+    let signature = *(signature_ptr as *const [u8; BANDERSNATCH_SIGNATURE_SIZE]);
+    let signature = Signature(signature);
+
+    let message = slice::from_raw_parts(message_ptr, message_size);
+
+    let public = *(public_ptr as *const [u8; BANDERSNATCH_PUBLIC_KEY_SIZE]);
+    let public = Public::unchecked_from(public);
+
+    Pair::verify(&signature, message, &public)
+
+
+
+    let seed = *(secret_ptr as *const [u8; BANDERSNATCH_SEED_SIZE]);
+
+    let secret = SecretKey::from_seed(&seed);
+
+    let pair = Pair { secret, seed };
+
+    let sign_data = &*(sign_data_ptr as *const vrf::VrfSignData);
+
+    let signature = pair.vrf_sign(&sign_data).signature;
+
+    ptr::copy(
+        signature.0.as_ptr(),
+        signature_out,
+        BANDERSNATCH_SIGNATURE_SIZE as usize,
+    );
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
 pub unsafe extern "C" fn bandersnatch_make_bytes(
+    context_ptr: *const u8,
+    context_size: usize,
     input_ptr: *const bandersnatch_VrfInput,
     output_ptr: *const bandersnatch_VrfOutput,
     bytes_ptr: *mut u8,
     bytes_size: usize,
 ) {
+    let context = slice::from_raw_parts(context_ptr, context_size);
     let input = &*(input_ptr as *const vrf::VrfInput);
     let output = &*(output_ptr as *const vrf::VrfOutput);
     let bytes = slice::from_raw_parts_mut(bytes_ptr, bytes_size);
 
     match bytes_size {
         16 => {
-            let x = output.make_bytes::<16>(b"ticket-id", input);
+            let x = output.make_bytes::<16>(context, input);
             bytes.copy_from_slice(&x);
         }
         32 => {
-            let x = output.make_bytes::<32>(b"ticket-id", input);
+            let x = output.make_bytes::<32>(context, input);
             bytes.copy_from_slice(&x);
         }
         _ => panic!(),
@@ -1570,7 +1700,7 @@ pub unsafe extern "C" fn bandersnatch_ring_vrf_context(
     encoded_ptr: *mut u8,
     encoded_size: usize,
 ) -> *const bandersnatch_RingVrfContext {
-    let mut encoded = Vec::from_raw_parts(encoded_ptr, encoded_size, encoded_size);
+    let encoded = Vec::from_raw_parts(encoded_ptr, encoded_size, encoded_size);
 
     let context = match ring_vrf::RingContext::<2048>::decode(&mut encoded.as_slice()) {
         Ok(context) => context,
@@ -1695,4 +1825,34 @@ pub unsafe extern "C" fn bandersnatch_ring_sign(
         signature_out,
         RING_SIGNATURE_SERIALIZED_SIZE as usize,
     );
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_ring_vrf_signature_encode(
+    signature_ptr: *const bandersnatch_RingVrfSignature,
+    out_ptr: *mut u8,
+) {
+    let signature = &*(signature_ptr as *const ring_vrf::RingVrfSignature);
+
+    let encoded = signature.encode();
+
+    ptr::copy(encoded.as_ptr(), out_ptr, encoded.len());
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_ring_vrf_signature_decode(
+    encoded_ptr: *mut u8,
+) -> *const bandersnatch_RingVrfSignature {
+    let encoded = &*(encoded_ptr as *mut [u8; 65]);
+
+    let signature = match RingVrfSignature::decode(&mut encoded.as_slice()) {
+        Ok(x) => x,
+        Err(_) => return null(),
+    };
+
+    let signature = std::ptr::addr_of!(signature) as *mut bandersnatch_RingVrfSignature;
+
+    signature
 }
