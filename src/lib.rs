@@ -1478,11 +1478,9 @@ pub unsafe extern "C" fn bandersnatch_vrf_input(
     let input = Box::new(vrf::VrfInput::new(domain, message));
 
     // leak for static lifetime
-    let input = Box::<vrf::VrfInput>::leak(input);
+    let input = Box::leak(input);
 
-    let input = std::ptr::addr_of!(input) as *mut bandersnatch_VrfInput;
-
-    input
+    input as *mut _ as *mut bandersnatch_VrfInput
 }
 
 #[allow(non_camel_case_types)]
@@ -1504,9 +1502,11 @@ pub unsafe extern "C" fn bandersnatch_vrf_output(
 
     let output = pair.vrf_output(input);
 
-    let output = std::ptr::addr_of!(output) as *mut bandersnatch_VrfOutput;
+    let output = Box::new(output);
 
-    output
+    let output = Box::leak(output);
+
+    output as *mut _ as *mut bandersnatch_VrfOutput
 }
 
 #[allow(unused_attributes)]
@@ -1535,9 +1535,11 @@ pub unsafe extern "C" fn bandersnatch_vrf_output_decode(
         Err(_) => return null(),
     };
 
-    let output = std::ptr::addr_of!(output) as *mut bandersnatch_VrfOutput;
+    let output = Box::new(output);
 
-    output
+    let output = Box::leak(output);
+
+    output as *mut _ as *mut bandersnatch_VrfOutput
 }
 
 #[allow(non_camel_case_types)]
@@ -1577,11 +1579,9 @@ pub unsafe extern "C" fn bandersnatch_vrf_sign_data(
     let sign_data = Box::new(sign_data);
 
     // leak for static lifetime
-    let sign_data = Box::<vrf::VrfSignData>::leak(sign_data);
+    let sign_data = Box::leak(sign_data);
 
-    let sign_data = std::ptr::addr_of!(sign_data) as *mut bandersnatch_VrfSignData;
-
-    sign_data
+    sign_data as *mut _ as *mut bandersnatch_VrfSignData
 }
 
 #[allow(unused_attributes)]
@@ -1665,9 +1665,11 @@ pub unsafe extern "C" fn bandersnatch_vrf_signature_decode(
         Err(_) => return null(),
     };
 
-    let signature = std::ptr::addr_of!(signature) as *mut bandersnatch_VrfSignature;
+    let signature = Box::new(signature);
 
-    signature
+    let signature = Box::leak(signature);
+
+    signature as *mut _ as *mut bandersnatch_VrfSignature
 }
 
 #[allow(unused_attributes)]
@@ -1686,9 +1688,11 @@ pub unsafe extern "C" fn bandersnatch_vrf_sign(
 
     let signature = pair.vrf_sign(&sign_data);
 
-    let signature = std::ptr::addr_of!(signature) as *mut bandersnatch_VrfSignature;
+    let signature = Box::new(signature);
 
-    signature
+    let signature = Box::leak(signature);
+
+    signature as *mut _ as *mut bandersnatch_VrfSignature
 }
 
 #[allow(unused_attributes)]
@@ -1724,9 +1728,11 @@ pub unsafe extern "C" fn bandersnatch_ring_vrf_context(
         Err(_) => return null(),
     };
 
-    let context = std::ptr::addr_of!(context) as *mut bandersnatch_RingVrfContext;
+    let context = Box::new(context);
 
-    context
+    let context = Box::leak(context);
+
+    context as *mut _ as *mut bandersnatch_RingVrfContext
 }
 
 #[allow(non_camel_case_types)]
@@ -1755,9 +1761,11 @@ pub unsafe extern "C" fn bandersnatch_ring_prover(
         None => return null(),
     };
 
-    let prover = std::ptr::addr_of!(prover) as *mut bandersnatch_RingProver;
+    let prover = Box::new(prover);
 
-    prover
+    let prover = Box::leak(prover);
+
+    prover as *mut _ as *mut bandersnatch_RingProver
 }
 
 #[allow(non_camel_case_types)]
@@ -1785,9 +1793,11 @@ pub unsafe extern "C" fn bandersnatch_ring_verifier(
         None => return null(),
     };
 
-    let verifier = std::ptr::addr_of!(verifier) as *mut bandersnatch_RingVerifier;
+    let verifier = Box::new(verifier);
 
-    verifier
+    let verifier = Box::leak(verifier);
+
+    verifier as *mut _ as *mut bandersnatch_RingVerifier
 }
 
 #[allow(non_camel_case_types)]
@@ -1819,9 +1829,11 @@ pub unsafe extern "C" fn bandersnatch_ring_vrf_signature_decode(
         Err(_) => return null(),
     };
 
-    let signature = std::ptr::addr_of!(signature) as *mut bandersnatch_RingVrfSignature;
+    let signature = Box::new(signature);
 
-    signature
+    let signature = Box::leak(signature);
+
+    signature as *mut _ as *mut bandersnatch_RingVrfSignature
 }
 
 #[allow(unused_attributes)]
@@ -1843,9 +1855,11 @@ pub unsafe extern "C" fn bandersnatch_ring_vrf_sign(
 
     let signature = pair.ring_vrf_sign(sign_data, prover);
 
-    let signature = std::ptr::addr_of!(signature) as *mut bandersnatch_RingVrfSignature;
+    let signature = Box::new(signature);
 
-    signature
+    let signature = Box::leak(signature);
+
+    signature as *mut _ as *mut bandersnatch_RingVrfSignature
 }
 
 #[allow(unused_attributes)]
