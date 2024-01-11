@@ -24,6 +24,7 @@ extern crate bandersnatch_vrfs;
 extern crate codec;
 extern crate core;
 
+use core::mem;
 use std::{ptr, slice};
 // #[cfg(feature = "serde")]
 // use crate::crypto::Ss58Codec;
@@ -68,7 +69,7 @@ const PREOUT_SERIALIZED_SIZE: usize = 33;
 ///
 /// The number is quite arbitrary and chosen to fulfill the use cases found so far.
 /// If required it can be extended in the future.
-const MAX_VRF_IOS: u32 = 3;
+// const MAX_VRF_IOS: u32 = 3;
 
 // /// Bandersnatch public key.
 // #[cfg_attr(feature = "full_crypto", derive(Hash))]
@@ -252,7 +253,7 @@ pub trait VrfCrypto {
 }
 
 /// VRF Secret Key.
-pub trait VrfSecret: VrfCrypto {
+trait VrfSecret: VrfCrypto {
     /// Get VRF-specific output .
     fn vrf_output(&self, data: &Self::VrfInput) -> Self::VrfOutput;
 
@@ -261,7 +262,7 @@ pub trait VrfSecret: VrfCrypto {
 }
 
 /// VRF Public Key.
-pub trait VrfPublic: VrfCrypto {
+trait VrfPublic: VrfCrypto {
     /// Verify input data signature.
     fn vrf_verify(&self, data: &Self::VrfSignData, signature: &Self::VrfSignature) -> bool;
 }
@@ -269,7 +270,7 @@ pub trait VrfPublic: VrfCrypto {
 /// Bandersnatch secret key.
 #[cfg(feature = "full_crypto")]
 #[derive(Clone)]
-pub struct Pair {
+struct Pair {
     secret: SecretKey,
     seed: Seed,
 }
@@ -365,7 +366,7 @@ impl Pair {
 // }
 //
 /// Bandersnatch VRF types and operations.
-pub mod vrf {
+mod vrf {
     // use super::*;
     // use crate::{bounded::BoundedVec, crypto::VrfCrypto, ConstU32};
     use bandersnatch_vrfs::{
@@ -387,7 +388,7 @@ pub mod vrf {
     use VrfCrypto;
     use VrfPublic;
     use VrfSecret;
-    use MAX_VRF_IOS;
+    // use MAX_VRF_IOS;
     use PREOUT_SERIALIZED_SIZE;
     use SIGNATURE_SERIALIZED_SIZE;
 
@@ -555,10 +556,10 @@ pub mod vrf {
     //#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, MaxEncodedLen, TypeInfo)]
     #[derive(Encode, Decode /*, MaxEncodedLen*/)]
     pub struct VrfSignature {
-        /// Transcript signature.
-        pub signature: Signature,
         /// VRF (pre)outputs.
         pub outputs: VrfIosVec<VrfOutput>,
+        /// Transcript signature.
+        pub signature: Signature,
     }
 
     #[cfg(feature = "full_crypto")]
@@ -572,7 +573,7 @@ pub mod vrf {
     #[cfg(feature = "full_crypto")]
     impl VrfSecret for Pair {
         fn vrf_sign(&self, data: &Self::VrfSignData) -> Self::VrfSignature {
-            const _: () = assert!(MAX_VRF_IOS == 3, "`MAX_VRF_IOS` expected to be 3");
+            // const _: () = assert!(MAX_VRF_IOS == 3, "`MAX_VRF_IOS` expected to be 3");
             // Workaround to overcome backend signature generic over the number of IOs.
             match data.inputs.len() {
                 0 => self.vrf_sign_gen::<0>(data),
@@ -598,7 +599,7 @@ pub mod vrf {
 
     impl VrfPublic for Public {
         fn vrf_verify(&self, data: &Self::VrfSignData, signature: &Self::VrfSignature) -> bool {
-            const _: () = assert!(MAX_VRF_IOS == 3, "`MAX_VRF_IOS` expected to be 3");
+            // const _: () = assert!(MAX_VRF_IOS == 3, "`MAX_VRF_IOS` expected to be 3");
             let outputs_len = signature.outputs.len();
             if outputs_len != data.inputs.len() {
                 return false;
@@ -704,12 +705,12 @@ pub mod vrf {
 }
 
 /// Bandersnatch Ring-VRF types and operations.
-pub mod ring_vrf {
+mod ring_vrf {
     use super::{vrf::*, *};
 
     pub use bandersnatch_vrfs::ring::{
         // RingProof,
-        // RingProver,
+        RingProver,
         RingVerifier,
         KZG,
     };
@@ -718,7 +719,7 @@ pub mod ring_vrf {
     /// Overhead in the domain size with respect to the supported ring size.
     ///
     /// Some bits of the domain are reserved for the zk-proof to work.
-    pub const RING_DOMAIN_OVERHEAD: u32 = 257;
+    // const RING_DOMAIN_OVERHEAD: u32 = 257;
 
     // Max size of serialized ring-vrf context given `domain_len`.
     pub(crate) const fn ring_context_serialized_size(domain_len: u32) -> usize {
@@ -910,10 +911,10 @@ pub mod ring_vrf {
     // #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, MaxEncodedLen, TypeInfo)]
     #[derive(Encode, Decode)]
     pub struct RingVrfSignature {
-        /// Ring signature.
-        pub signature: [u8; RING_SIGNATURE_SERIALIZED_SIZE],
         /// VRF (pre)outputs.
         pub outputs: VrfIosVec<VrfOutput>,
+        /// Ring signature.
+        pub signature: [u8; RING_SIGNATURE_SERIALIZED_SIZE],
     }
 
     #[cfg(feature = "full_crypto")]
@@ -976,7 +977,7 @@ pub mod ring_vrf {
         /// The signature is verifiable if it has been produced by a member of the ring
         /// from which the [`RingVerifier`] has been constructed.
         pub fn ring_vrf_verify(&self, data: &VrfSignData, verifier: &RingVerifier) -> bool {
-            const _: () = assert!(MAX_VRF_IOS == 3, "`MAX_VRF_IOS` expected to be 3");
+            // const _: () = assert!(MAX_VRF_IOS == 3, "`MAX_VRF_IOS` expected to be 3");
             let preouts_len = self.outputs.len();
             if preouts_len != data.inputs.len() {
                 return false;
@@ -1465,6 +1466,12 @@ pub enum bandersnatch_VrfInput {}
 
 #[allow(unused_attributes)]
 #[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_input_free(vrf_input_ptr: *const bandersnatch_VrfInput) {
+    let _ = Box::from_raw(vrf_input_ptr as *mut VrfInput);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
 pub unsafe extern "C" fn bandersnatch_vrf_input(
     domain_ptr: *const u8,
     domain_size: usize,
@@ -1485,6 +1492,14 @@ pub unsafe extern "C" fn bandersnatch_vrf_input(
 
 #[allow(non_camel_case_types)]
 pub enum bandersnatch_VrfOutput {}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_output_free(
+    vrf_output_ptr: *const bandersnatch_VrfOutput,
+) {
+    let _ = Box::from_raw(vrf_output_ptr as *mut VrfOutput);
+}
 
 #[allow(unused_attributes)]
 #[no_mangle]
@@ -1526,7 +1541,7 @@ pub unsafe extern "C" fn bandersnatch_vrf_output_encode(
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_vrf_output_decode(
-    encoded_ptr: *mut u8,
+    encoded_ptr: *const u8,
 ) -> *const bandersnatch_VrfOutput {
     let encoded = &*(encoded_ptr as *mut [u8; 65]);
 
@@ -1544,6 +1559,14 @@ pub unsafe extern "C" fn bandersnatch_vrf_output_decode(
 
 #[allow(non_camel_case_types)]
 pub enum bandersnatch_VrfSignData {}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_sign_data_free(
+    sign_data_ptr: *const bandersnatch_VrfSignData,
+) {
+    let _ = Box::from_raw(sign_data_ptr as *mut VrfSignData);
+}
 
 #[allow(unused_attributes)]
 #[no_mangle]
@@ -1640,6 +1663,14 @@ pub enum bandersnatch_VrfSignature {}
 
 #[allow(unused_attributes)]
 #[no_mangle]
+pub unsafe extern "C" fn bandersnatch_vrf_signature_free(
+    signature_ptr: *const bandersnatch_VrfSignature,
+) {
+    let _ = Box::from_raw(signature_ptr as *mut vrf::VrfSignature);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
 pub unsafe extern "C" fn bandersnatch_vrf_signature_encode(
     signature_ptr: *const bandersnatch_VrfSignature,
     out_ptr: *mut u8,
@@ -1657,10 +1688,17 @@ pub unsafe extern "C" fn bandersnatch_vrf_signature_decode(
     encoded_ptr: *mut u8,
     encoded_size: usize,
 ) -> *const bandersnatch_VrfSignature {
-    let encoded = Vec::from_raw_parts(encoded_ptr, encoded_size, encoded_size);
-    let encoded = encoded.clone();
+    let encoded = Vec::from_raw_parts(
+        mem::transmute::<*const u8, *mut u8>(encoded_ptr),
+        encoded_size,
+        encoded_size,
+    );
 
-    let signature = match vrf::VrfSignature::decode(&mut encoded.as_slice()) {
+    let signature = vrf::VrfSignature::decode(&mut encoded.as_slice());
+
+    encoded.leak();
+
+    let signature = match signature {
         Ok(x) => x,
         Err(_) => return null(),
     };
@@ -1713,17 +1751,35 @@ pub unsafe extern "C" fn bandersnatch_vrf_verify(
 }
 
 #[allow(non_camel_case_types)]
-pub enum bandersnatch_RingVrfContext {}
+pub enum bandersnatch_RingContext {}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_ring_context_free(
+    context_ptr: *const bandersnatch_RingContext,
+) {
+    let _ = Box::from_raw(context_ptr as *mut ring_vrf::RingContext<2048>);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
+pub unsafe extern "C" fn bandersnatch_ring_context_serialized_size(domain_size: u32) -> usize {
+    ring_vrf::ring_context_serialized_size(domain_size)
+}
 
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_ring_vrf_context(
     encoded_ptr: *mut u8,
     encoded_size: usize,
-) -> *const bandersnatch_RingVrfContext {
+) -> *const bandersnatch_RingContext {
     let encoded = Vec::from_raw_parts(encoded_ptr, encoded_size, encoded_size);
 
-    let context = match ring_vrf::RingContext::<2048>::decode(&mut encoded.as_slice()) {
+    let context = ring_vrf::RingContext::<2048>::decode(&mut encoded.as_slice());
+
+    encoded.leak();
+
+    let context = match context {
         Ok(context) => context,
         Err(_) => return null(),
     };
@@ -1732,7 +1788,7 @@ pub unsafe extern "C" fn bandersnatch_ring_vrf_context(
 
     let context = Box::leak(context);
 
-    context as *mut _ as *mut bandersnatch_RingVrfContext
+    context as *mut _ as *mut bandersnatch_RingContext
 }
 
 #[allow(non_camel_case_types)]
@@ -1740,8 +1796,14 @@ pub enum bandersnatch_RingProver {}
 
 #[allow(unused_attributes)]
 #[no_mangle]
+pub unsafe extern "C" fn bandersnatch_ring_prover_free(prover_ptr: *const bandersnatch_RingProver) {
+    let _ = Box::from_raw(prover_ptr as *mut ring_vrf::RingProver);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
 pub unsafe extern "C" fn bandersnatch_ring_prover(
-    ring_context_ptr: *const bandersnatch_RingVrfContext,
+    ring_context_ptr: *const bandersnatch_RingContext,
     keys_ptrs: *const *const u8,
     keys_size: usize,
     index: usize,
@@ -1773,8 +1835,16 @@ pub enum bandersnatch_RingVerifier {}
 
 #[allow(unused_attributes)]
 #[no_mangle]
+pub unsafe extern "C" fn bandersnatch_ring_verifier_free(
+    verifier_ptr: *const bandersnatch_RingVerifier,
+) {
+    let _ = Box::from_raw(verifier_ptr as *mut ring_vrf::RingVerifier);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
 pub unsafe extern "C" fn bandersnatch_ring_verifier(
-    ring_context_ptr: *const bandersnatch_RingVrfContext,
+    ring_context_ptr: *const bandersnatch_RingContext,
     keys_ptrs: *const *const u8,
     keys_size: usize,
 ) -> *const bandersnatch_RingVerifier {
@@ -1805,6 +1875,14 @@ pub enum bandersnatch_RingVrfSignature {}
 
 #[allow(unused_attributes)]
 #[no_mangle]
+pub unsafe extern "C" fn bandersnatch_ring_vrf_signature_free(
+    signature_ptr: *const bandersnatch_RingVrfSignature,
+) {
+    let _ = Box::from_raw(signature_ptr as *mut ring_vrf::RingVrfSignature);
+}
+
+#[allow(unused_attributes)]
+#[no_mangle]
 pub unsafe extern "C" fn bandersnatch_ring_vrf_signature_encode(
     signature_ptr: *const bandersnatch_RingVrfSignature,
     out_ptr: *mut u8,
@@ -1819,12 +1897,20 @@ pub unsafe extern "C" fn bandersnatch_ring_vrf_signature_encode(
 #[allow(unused_attributes)]
 #[no_mangle]
 pub unsafe extern "C" fn bandersnatch_ring_vrf_signature_decode(
-    encoded_ptr: *mut u8,
+    encoded_ptr: *const u8,
     encoded_size: usize,
 ) -> *const bandersnatch_RingVrfSignature {
-    let encoded = Vec::from_raw_parts(encoded_ptr, encoded_size, encoded_size);
+    let encoded = Vec::from_raw_parts(
+        mem::transmute::<*const u8, *mut u8>(encoded_ptr),
+        encoded_size,
+        encoded_size,
+    );
 
-    let signature = match RingVrfSignature::decode(&mut encoded.as_slice()) {
+    let signature = RingVrfSignature::decode(&mut encoded.as_slice());
+
+    encoded.leak();
+
+    let signature = match signature {
         Ok(x) => x,
         Err(_) => return null(),
     };
