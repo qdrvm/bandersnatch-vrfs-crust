@@ -6,35 +6,15 @@ license = "Apache-2.0"
 build = "build.rs"
 
 [dependencies]
-# bandersnatch crypto
 bandersnatch_vrfs = { git = "https://github.com/w3f/ring-vrf", rev = "4831a70", default-features = false, features = ["substrate-curves"], optional = true }
 serde = "1.0.193"
 codec = { package = "parity-scale-codec", version = "3.6.1", default-features = false, features = ["derive", "max-encoded-len"] }
-#scale-info = { version = "2.5.0", default-features = false, features = ["derive"] }
-#primitive-types = { version = "0.12.0", default-features = false, features = ["codec", "scale-info"] }
 
 [features]
 default = ["std"]
 std = [
     "bandersnatch_vrfs/std",
-    "full_crypto",
     "codec/std",
-#    "scale-info/std",
-]
-
-# This feature adds Bandersnatch crypto primitives.
-# It should not be used in production since the implementation and interface may still
-# be subject to significant changes.
-bandersnatch-experimental = ["bandersnatch_vrfs"]
-
-full_crypto = [
-#    "array-bytes",
-#    "blake2",
-#    "ed25519-zebra",
-#    "libsecp256k1",
-#    "secp256k1",
-#    "sp-core-hashing",
-#    "sp-runtime-interface/disable_target_static_assertions",
 ]
 
 [build-dependencies]

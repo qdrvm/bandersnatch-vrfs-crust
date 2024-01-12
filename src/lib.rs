@@ -3,18 +3,6 @@
 // Copyright (C) Parity Technologies (UK) Ltd.
 // SPDX-License-Identifier: Apache-2.0
 
-// Licensed under the Apache License, Version 2.0 (the "License");
-// you may not use this file except in compliance with the License.
-// You may obtain a copy of the License at
-//
-// 	http://www.apache.org/licenses/LICENSE-2.0
-//
-// Unless required by applicable law or agreed to in writing, software
-// distributed under the License is distributed on an "AS IS" BASIS,
-// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
-// See the License for the specific language governing permissions and
-// limitations under the License.
-
 //! VRFs backed by [Bandersnatch](https://neuromancer.sk/std/bls/Bandersnatch),
 //! an elliptic curve built over BLS12-381 scalar field.
 //!
@@ -26,39 +14,13 @@ extern crate core;
 
 use core::mem;
 use std::{ptr, slice};
-// #[cfg(feature = "serde")]
-// use crate::crypto::Ss58Codec;
-// use crate::crypto::{
-//     ByteArray, CryptoType, CryptoTypeId, Derive, Public as TraitPublic, UncheckedFrom, VrfPublic,
-// };
-// #[cfg(feature = "full_crypto")]
-// use crate::crypto::{DeriveError, DeriveJunction, Pair as TraitPair, SecretStringError, VrfSecret};
-// #[cfg(feature = "serde")]
-// use serde::{de, Deserialize, Deserializer, Serialize, Serializer};
-// #[cfg(all(not(feature = "std"), feature = "serde"))]
-// use sp_std::alloc::{format, string::String};
-//
-#[cfg(feature = "full_crypto")]
-use bandersnatch_vrfs::{
-    CanonicalSerialize,
-    SecretKey,
-    // PUBLIC_KEY_LENGTH
-};
+
+use bandersnatch_vrfs::{CanonicalSerialize, SecretKey};
 use codec::Decode;
-// use codec::Encode;
-// use scale_info::TypeInfo;
-//
-// use sp_runtime_interface::pass_by::PassByInner;
-// use sp_std::{vec, vec::Vec};
-//
-// /// Identifier used to match public keys against bandersnatch-vrf keys.
-// pub const CRYPTO_ID: CryptoTypeId = CryptoTypeId(*b"band");
 
 /// Context used to produce a plain signature without any VRF input/output.
-#[cfg(feature = "full_crypto")]
 const SIGNING_CTX: &[u8] = b"BandersnatchSigningContext";
 
-#[cfg(feature = "full_crypto")]
 const SEED_SERIALIZED_SIZE: usize = 32;
 
 const PUBLIC_SERIALIZED_SIZE: usize = 33;
@@ -71,21 +33,7 @@ const PREOUT_SERIALIZED_SIZE: usize = 33;
 /// If required it can be extended in the future.
 // const MAX_VRF_IOS: u32 = 3;
 
-// /// Bandersnatch public key.
-// #[cfg_attr(feature = "full_crypto", derive(Hash))]
-// #[derive(
-//     Clone,
-//     Copy,
-//     PartialEq,
-//     Eq,
-//     PartialOrd,
-//     Ord,
-//     Encode,
-//     Decode,
-//     PassByInner,
-//     MaxEncodedLen,
-//     TypeInfo,
-// )]
+/// Bandersnatch public key.
 pub struct Public(pub [u8; PUBLIC_SERIALIZED_SIZE]);
 
 impl Public {
@@ -94,151 +42,14 @@ impl Public {
     }
 }
 
-// impl AsRef<[u8; PUBLIC_SERIALIZED_SIZE]> for Public {
-//     fn as_ref(&self) -> &[u8; PUBLIC_SERIALIZED_SIZE] {
-//         &self.0
-//     }
-// }
-//
-// impl AsRef<[u8]> for Public {
-//     fn as_ref(&self) -> &[u8] {
-//         &self.0[..]
-//     }
-// }
-//
-// impl AsMut<[u8]> for Public {
-//     fn as_mut(&mut self) -> &mut [u8] {
-//         &mut self.0[..]
-//     }
-// }
-//
-// impl TryFrom<&[u8]> for Public {
-//     type Error = ();
-//
-//     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-//         if data.len() != PUBLIC_SERIALIZED_SIZE {
-//             return Err(());
-//         }
-//         let mut r = [0u8; PUBLIC_SERIALIZED_SIZE];
-//         r.copy_from_slice(data);
-//         Ok(Self::unchecked_from(r))
-//     }
-// }
-//
-// impl ByteArray for Public {
-//     const LEN: usize = PUBLIC_SERIALIZED_SIZE;
-// }
-//
-// impl TraitPublic for Public {}
-//
-// impl CryptoType for Public {
-//     #[cfg(feature = "full_crypto")]
-//     type Pair = Pair;
-// }
-//
-// impl Derive for Public {}
-//
-// impl sp_std::fmt::Debug for Public {
-//     #[cfg(feature = "std")]
-//     fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-//         let s = self.to_ss58check();
-//         write!(
-//             f,
-//             "{} ({}...)",
-//             crate::hexdisplay::HexDisplay::from(&self.as_ref()),
-//             &s[0..8]
-//         )
-//     }
-//
-//     #[cfg(not(feature = "std"))]
-//     fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-//         Ok(())
-//     }
-// }
-//
-// #[cfg(feature = "serde")]
-// impl Serialize for Public {
-//     fn serialize<S: Serializer>(&self, serializer: S) -> Result<S::Ok, S::Error> {
-//         serializer.serialize_str(&self.to_ss58check())
-//     }
-// }
-//
-// #[cfg(feature = "serde")]
-// impl<'de> Deserialize<'de> for Public {
-//     fn deserialize<D: Deserializer<'de>>(deserializer: D) -> Result<Self, D::Error> {
-//         Public::from_ss58check(&String::deserialize(deserializer)?)
-//             .map_err(|e| de::Error::custom(format!("{:?}", e)))
-//     }
-// }
-
 /// Bandersnatch signature.
 ///
-/// The signature is created via the [`VrfSecret::vrf_sign`] using [`SIGNING_CTX`] as transcript
-/// `label`.
+/// The signature is created via the [`VrfSecret::vrf_sign`] using [`SIGNING_CTX`] as transcript `label`.
 #[cfg_attr(feature = "full_crypto", derive(Hash))]
-#[derive(
-    Clone,
-    Copy,
-    Encode,
-    Decode,
-    // PartialEq, Eq, Encode, Decode, PassByInner, MaxEncodedLen, TypeInfo
-)]
+#[derive(Clone, Copy, Encode, Decode)]
 pub struct Signature([u8; SIGNATURE_SERIALIZED_SIZE]);
 
-// impl UncheckedFrom<[u8; SIGNATURE_SERIALIZED_SIZE]> for Signature {
-//     fn unchecked_from(raw: [u8; SIGNATURE_SERIALIZED_SIZE]) -> Self {
-//         Signature(raw)
-//     }
-// }
-//
-// impl AsRef<[u8]> for Signature {
-//     fn as_ref(&self) -> &[u8] {
-//         &self.0[..]
-//     }
-// }
-//
-// impl AsMut<[u8]> for Signature {
-//     fn as_mut(&mut self) -> &mut [u8] {
-//         &mut self.0[..]
-//     }
-// }
-//
-// impl TryFrom<&[u8]> for Signature {
-//     type Error = ();
-//
-//     fn try_from(data: &[u8]) -> Result<Self, Self::Error> {
-//         if data.len() != SIGNATURE_SERIALIZED_SIZE {
-//             return Err(());
-//         }
-//         let mut r = [0u8; SIGNATURE_SERIALIZED_SIZE];
-//         r.copy_from_slice(data);
-//         Ok(Self::unchecked_from(r))
-//     }
-// }
-//
-// impl ByteArray for Signature {
-//     const LEN: usize = SIGNATURE_SERIALIZED_SIZE;
-// }
-//
-// impl CryptoType for Signature {
-//     #[cfg(feature = "full_crypto")]
-//     type Pair = Pair;
-// }
-//
-// impl sp_std::fmt::Debug for Signature {
-//     #[cfg(feature = "std")]
-//     fn fmt(&self, f: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-//         write!(f, "{}", crate::hexdisplay::HexDisplay::from(&self.0))
-//     }
-//
-//     #[cfg(not(feature = "std"))]
-//     fn fmt(&self, _: &mut sp_std::fmt::Formatter) -> sp_std::fmt::Result {
-//         Ok(())
-//     }
-// }
-
 /// The raw secret seed, which can be used to reconstruct the secret [`Pair`].
-#[cfg(feature = "full_crypto")]
 type Seed = [u8; SEED_SERIALIZED_SIZE];
 
 pub trait VrfCrypto {
@@ -268,22 +79,12 @@ trait VrfPublic: VrfCrypto {
 }
 
 /// Bandersnatch secret key.
-#[cfg(feature = "full_crypto")]
 #[derive(Clone)]
 struct Pair {
     secret: SecretKey,
-    seed: Seed,
+    _seed: Seed,
 }
 
-// #[cfg(feature = "full_crypto")]
-// impl Pair {
-//     /// Get the key seed.
-//     pub fn seed(&self) -> Seed {
-//         self.seed
-//     }
-// }
-
-#[cfg(feature = "full_crypto")]
 impl Pair {
     //     type Seed = Seed;
     //     type Public = Public;
@@ -353,28 +154,15 @@ impl Pair {
         };
         public.vrf_verify(&data, &signature)
     }
-
-    //     /// Return a vector filled with the seed (32 bytes).
-    //     fn to_raw_vec(&self) -> Vec<u8> {
-    //         self.seed().to_vec()
-    //     }
 }
 
-// #[cfg(feature = "full_crypto")]
-// impl CryptoType for Pair {
-//     type Pair = Pair;
-// }
-//
 /// Bandersnatch VRF types and operations.
 mod vrf {
-    // use super::*;
-    // use crate::{bounded::BoundedVec, crypto::VrfCrypto, ConstU32};
     use bandersnatch_vrfs::{
         CanonicalDeserialize,
         CanonicalSerialize,
         IntoVrfInput,
         Message,
-        // PublicKey,
         ThinVrfSignature,
         Transcript,
     };
@@ -388,7 +176,6 @@ mod vrf {
     use VrfCrypto;
     use VrfPublic;
     use VrfSecret;
-    // use MAX_VRF_IOS;
     use PREOUT_SERIALIZED_SIZE;
     use SIGNATURE_SERIALIZED_SIZE;
 
@@ -442,20 +229,6 @@ mod vrf {
 
     impl EncodeLike for VrfOutput {}
 
-    //     impl MaxEncodedLen for VrfOutput {
-    //         fn max_encoded_len() -> usize {
-    //             <[u8; PREOUT_SERIALIZED_SIZE]>::max_encoded_len()
-    //         }
-    //     }
-    //
-    //     impl TypeInfo for VrfOutput {
-    //         type Identity = [u8; PREOUT_SERIALIZED_SIZE];
-    //
-    //         fn type_info() -> scale_info::Type {
-    //             Self::Identity::type_info()
-    //         }
-    //     }
-    //
     /// Data to be signed via one of the two provided vrf flavors.
     ///
     /// The object contains a transcript and a sequence of [`VrfInput`]s ready to be signed.
@@ -483,27 +256,6 @@ mod vrf {
     }
 
     impl VrfSignData {
-        // /// Construct a new data to be signed.
-        // ///
-        // /// Fails if the `inputs` iterator yields more elements than [`MAX_VRF_IOS`]
-        // ///
-        // /// Refer to [`VrfSignData`] for details about transcript and inputs.
-        // pub fn new(
-        //     transcript_label: &'static [u8],
-        //     transcript_data: impl IntoIterator<Item = impl AsRef<[u8]>>,
-        //     inputs: impl IntoIterator<Item = VrfInput>,
-        // ) -> Result<Self, ()> {
-        //     let inputs: Vec<VrfInput> = inputs.into_iter().collect();
-        //     if inputs.len() > MAX_VRF_IOS as usize {
-        //         return Err(());
-        //     }
-        //     Ok(Self::new_unchecked(
-        //         transcript_label,
-        //         transcript_data,
-        //         inputs,
-        //     ))
-        // }
-
         /// Construct a new data to be signed.
         ///
         /// At most the first [`MAX_VRF_IOS`] elements of `inputs` are used.
@@ -553,7 +305,6 @@ mod vrf {
     /// [`VrfSignData::inputs`].
     ///
     /// Refer to [`VrfSignData`] for more details.
-    //#[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, MaxEncodedLen, TypeInfo)]
     #[derive(Encode, Decode /*, MaxEncodedLen*/)]
     pub struct VrfSignature {
         /// VRF (pre)outputs.
@@ -562,16 +313,14 @@ mod vrf {
         pub signature: Signature,
     }
 
-    #[cfg(feature = "full_crypto")]
-    impl VrfCrypto for Pair {
+        impl VrfCrypto for Pair {
         type VrfInput = VrfInput;
         type VrfOutput = VrfOutput;
         type VrfSignData = VrfSignData;
         type VrfSignature = VrfSignature;
     }
 
-    #[cfg(feature = "full_crypto")]
-    impl VrfSecret for Pair {
+        impl VrfSecret for Pair {
         fn vrf_sign(&self, data: &Self::VrfSignData) -> Self::VrfSignature {
             // const _: () = assert!(MAX_VRF_IOS == 3, "`MAX_VRF_IOS` expected to be 3");
             // Workaround to overcome backend signature generic over the number of IOs.
@@ -615,8 +364,7 @@ mod vrf {
         }
     }
 
-    #[cfg(feature = "full_crypto")]
-    impl Pair {
+        impl Pair {
         fn vrf_sign_gen<const N: usize>(&self, data: &VrfSignData) -> VrfSignature {
             let ios = core::array::from_fn(|i| self.secret.vrf_inout(data.inputs[i].0));
 
@@ -642,17 +390,6 @@ mod vrf {
 
             signature
         }
-
-        // /// Generate an arbitrary number of bytes from the given `context` and VRF `input`.
-        // pub fn make_bytes<const N: usize>(
-        //     &self,
-        //     context: &'static [u8],
-        //     input: &VrfInput,
-        // ) -> [u8; N] {
-        //     let transcript = Transcript::new_labeled(context);
-        //     let inout = self.secret.vrf_inout(input.0);
-        //     inout.vrf_output_bytes(transcript)
-        // }
     }
 
     impl Public {
@@ -808,16 +545,6 @@ mod ring_vrf {
     pub struct RingContext<const D: u32>(KZG);
 
     impl<const D: u32> RingContext<D> {
-        // /// Build an dummy instance for testing purposes.
-        // pub fn new_testing() -> Self {
-        //     Self(KZG::testing_kzg_setup([0; 32], D))
-        // }
-        //
-        // /// Get the keyset max size.
-        // pub fn max_keyset_size(&self) -> usize {
-        //     self.0.max_keyset_size()
-        // }
-
         /// Get ring prover for the key at index `public_idx` in the `public_keys` set.
         pub fn prover(&self, public_keys: &[Public], public_idx: usize) -> Option<RingProver> {
             let mut pks = Vec::with_capacity(public_keys.len());
@@ -880,35 +607,7 @@ mod ring_vrf {
         }
     }
 
-    // impl<const D: u32> EncodeLike for RingContext<D> {}
-    //
-    // impl<const D: u32> MaxEncodedLen for RingContext<D> {
-    //     fn max_encoded_len() -> usize {
-    //         ring_context_serialized_size(D)
-    //     }
-    // }
-    //
-    // impl<const D: u32> TypeInfo for RingContext<D> {
-    //     type Identity = Self;
-    //
-    //     fn type_info() -> scale_info::Type {
-    //         let path = scale_info::Path::new("RingContext", module_path!());
-    //         let array_type_def = scale_info::TypeDefArray {
-    //             len: ring_context_serialized_size(D) as u32,
-    //             type_param: scale_info::MetaType::new::<u8>(),
-    //         };
-    //         let type_def = scale_info::TypeDef::Array(array_type_def);
-    //         scale_info::Type {
-    //             path,
-    //             type_params: Vec::new(),
-    //             type_def,
-    //             docs: Vec::new(),
-    //         }
-    //     }
-    // }
-
     /// Ring VRF signature.
-    // #[derive(Clone, Debug, PartialEq, Eq, Encode, Decode, MaxEncodedLen, TypeInfo)]
     #[derive(Encode, Decode)]
     pub struct RingVrfSignature {
         /// VRF (pre)outputs.
@@ -917,8 +616,7 @@ mod ring_vrf {
         pub signature: [u8; RING_SIGNATURE_SERIALIZED_SIZE],
     }
 
-    #[cfg(feature = "full_crypto")]
-    impl Pair {
+        impl Pair {
         /// Produce a ring-vrf signature.
         ///
         /// The ring signature is verifiable if the public key corresponding to the
@@ -1022,354 +720,6 @@ mod ring_vrf {
     }
 }
 
-// #[cfg(test)]
-// mod tests {
-//     use super::{ring_vrf::*, vrf::*, *};
-//     use crate::crypto::{VrfPublic, VrfSecret, DEV_PHRASE};
-//
-//     const DEV_SEED: &[u8; SEED_SERIALIZED_SIZE] = &[0xcb; SEED_SERIALIZED_SIZE];
-//     const TEST_DOMAIN_SIZE: u32 = 1024;
-//
-//     type TestRingContext = RingContext<TEST_DOMAIN_SIZE>;
-//
-//     #[allow(unused)]
-//     fn b2h(bytes: &[u8]) -> String {
-//         array_bytes::bytes2hex("", bytes)
-//     }
-//
-//     fn h2b(hex: &str) -> Vec<u8> {
-//         array_bytes::hex2bytes_unchecked(hex)
-//     }
-//
-//     #[test]
-//     fn backend_assumptions_sanity_check() {
-//         let kzg = KZG::testing_kzg_setup([0; 32], TEST_DOMAIN_SIZE);
-//         assert_eq!(
-//             kzg.max_keyset_size() as u32,
-//             TEST_DOMAIN_SIZE - RING_DOMAIN_OVERHEAD
-//         );
-//
-//         assert_eq!(
-//             kzg.uncompressed_size(),
-//             ring_context_serialized_size(TEST_DOMAIN_SIZE)
-//         );
-//
-//         let pks: Vec<_> = (0..16)
-//             .map(|i| SecretKey::from_seed(&[i as u8; 32]).to_public().0.into())
-//             .collect();
-//
-//         let secret = SecretKey::from_seed(&[0u8; 32]);
-//
-//         let public = secret.to_public();
-//         assert_eq!(public.compressed_size(), PUBLIC_SERIALIZED_SIZE);
-//
-//         let input = VrfInput::new(b"foo", &[]);
-//         let preout = secret.vrf_preout(&input.0);
-//         assert_eq!(preout.compressed_size(), PREOUT_SERIALIZED_SIZE);
-//
-//         let verifier_key = kzg.verifier_key(pks.clone());
-//         assert_eq!(
-//             verifier_key.compressed_size() + 4,
-//             RING_VERIFIER_DATA_SERIALIZED_SIZE
-//         );
-//
-//         let prover_key = kzg.prover_key(pks);
-//         let ring_prover = kzg.init_ring_prover(prover_key, 0);
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], None);
-//
-//         let thin_signature: bandersnatch_vrfs::ThinVrfSignature<0> =
-//             secret.sign_thin_vrf(data.transcript.clone(), &[]);
-//         assert_eq!(thin_signature.compressed_size(), SIGNATURE_SERIALIZED_SIZE);
-//
-//         let ring_signature: bandersnatch_vrfs::RingVrfSignature<0> =
-//             bandersnatch_vrfs::RingProver {
-//                 ring_prover: &ring_prover,
-//                 secret: &secret,
-//             }
-//             .sign_ring_vrf(data.transcript.clone(), &[]);
-//         assert_eq!(
-//             ring_signature.compressed_size(),
-//             RING_SIGNATURE_SERIALIZED_SIZE
-//         );
-//     }
-//
-//     #[test]
-//     fn max_vrf_ios_bound_respected() {
-//         let inputs: Vec<_> = (0..MAX_VRF_IOS - 1)
-//             .map(|_| VrfInput::new(b"", &[]))
-//             .collect();
-//         let mut sign_data = VrfSignData::new(b"", &[b""], inputs).unwrap();
-//         let res = sign_data.push_vrf_input(VrfInput::new(b"", b""));
-//         assert!(res.is_ok());
-//         let res = sign_data.push_vrf_input(VrfInput::new(b"", b""));
-//         assert!(res.is_err());
-//         let inputs: Vec<_> = (0..MAX_VRF_IOS + 1)
-//             .map(|_| VrfInput::new(b"", b""))
-//             .collect();
-//         let res = VrfSignData::new(b"mydata", &[b"tdata"], inputs);
-//         assert!(res.is_err());
-//     }
-//
-//     #[test]
-//     fn derive_works() {
-//         let pair = Pair::from_string(&format!("{}//Alice//Hard", DEV_PHRASE), None).unwrap();
-//         let known = h2b("2b340c18b94dc1916979cb83daf3ed4ac106742ddc06afc42cf26be3b18a523f80");
-//         assert_eq!(pair.public().as_ref(), known);
-//
-//         // Soft derivation not supported
-//         let res = Pair::from_string(&format!("{}//Alice/Soft", DEV_PHRASE), None);
-//         assert!(res.is_err());
-//     }
-//
-//     #[test]
-//     fn sign_verify() {
-//         let pair = Pair::from_seed(DEV_SEED);
-//         let public = pair.public();
-//         let msg = b"hello";
-//
-//         let signature = pair.sign(msg);
-//         assert!(Pair::verify(&signature, msg, &public));
-//     }
-//
-//     #[test]
-//     fn vrf_sign_verify() {
-//         let pair = Pair::from_seed(DEV_SEED);
-//         let public = pair.public();
-//
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let i2 = VrfInput::new(b"dom2", b"bar");
-//         let i3 = VrfInput::new(b"dom3", b"baz");
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], [i1, i2, i3]);
-//
-//         let signature = pair.vrf_sign(&data);
-//
-//         assert!(public.vrf_verify(&data, &signature));
-//     }
-//
-//     #[test]
-//     fn vrf_sign_verify_bad_inputs() {
-//         let pair = Pair::from_seed(DEV_SEED);
-//         let public = pair.public();
-//
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let i2 = VrfInput::new(b"dom2", b"bar");
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"aaaa"], [i1.clone(), i2.clone()]);
-//         let signature = pair.vrf_sign(&data);
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"bbb"], [i1, i2.clone()]);
-//         assert!(!public.vrf_verify(&data, &signature));
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"aaa"], [i2]);
-//         assert!(!public.vrf_verify(&data, &signature));
-//     }
-//
-//     #[test]
-//     fn vrf_make_bytes_matches() {
-//         let pair = Pair::from_seed(DEV_SEED);
-//
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let i2 = VrfInput::new(b"dom2", b"bar");
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], [i1.clone(), i2.clone()]);
-//         let signature = pair.vrf_sign(&data);
-//
-//         let o10 = pair.make_bytes::<32>(b"ctx1", &i1);
-//         let o11 = signature.outputs[0].make_bytes::<32>(b"ctx1", &i1);
-//         assert_eq!(o10, o11);
-//
-//         let o20 = pair.make_bytes::<48>(b"ctx2", &i2);
-//         let o21 = signature.outputs[1].make_bytes::<48>(b"ctx2", &i2);
-//         assert_eq!(o20, o21);
-//     }
-//
-//     #[test]
-//     fn encode_decode_vrf_signature() {
-//         // Transcript data is hashed together and signed.
-//         // It doesn't contribute to serialized length.
-//         let pair = Pair::from_seed(DEV_SEED);
-//
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let i2 = VrfInput::new(b"dom2", b"bar");
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], [i1.clone(), i2.clone()]);
-//         let expected = pair.vrf_sign(&data);
-//
-//         let bytes = expected.encode();
-//
-//         let expected_len =
-//             data.inputs.len() * PREOUT_SERIALIZED_SIZE + SIGNATURE_SERIALIZED_SIZE + 1;
-//         assert_eq!(bytes.len(), expected_len);
-//
-//         let decoded = VrfSignature::decode(&mut bytes.as_slice()).unwrap();
-//         assert_eq!(expected, decoded);
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], []);
-//         let expected = pair.vrf_sign(&data);
-//
-//         let bytes = expected.encode();
-//
-//         let decoded = VrfSignature::decode(&mut bytes.as_slice()).unwrap();
-//         assert_eq!(expected, decoded);
-//     }
-//
-//     #[test]
-//     fn ring_vrf_sign_verify() {
-//         let ring_ctx = TestRingContext::new_testing();
-//
-//         let mut pks: Vec<_> = (0..16)
-//             .map(|i| Pair::from_seed(&[i as u8; 32]).public())
-//             .collect();
-//         assert!(pks.len() <= ring_ctx.max_keyset_size());
-//
-//         let pair = Pair::from_seed(DEV_SEED);
-//
-//         // Just pick one index to patch with the actual public key
-//         let prover_idx = 3;
-//         pks[prover_idx] = pair.public();
-//
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let i2 = VrfInput::new(b"dom2", b"bar");
-//         let i3 = VrfInput::new(b"dom3", b"baz");
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], [i1, i2, i3]);
-//
-//         let prover = ring_ctx.prover(&pks, prover_idx).unwrap();
-//         let signature = pair.ring_vrf_sign(&data, &prover);
-//
-//         let verifier = ring_ctx.verifier(&pks).unwrap();
-//         assert!(signature.ring_vrf_verify(&data, &verifier));
-//     }
-//
-//     #[test]
-//     fn ring_vrf_sign_verify_with_out_of_ring_key() {
-//         let ring_ctx = TestRingContext::new_testing();
-//
-//         let pks: Vec<_> = (0..16)
-//             .map(|i| Pair::from_seed(&[i as u8; 32]).public())
-//             .collect();
-//         let pair = Pair::from_seed(DEV_SEED);
-//
-//         // Just pick one index to patch with the actual public key
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let data = VrfSignData::new_unchecked(b"mydata", Some(b"tdata"), Some(i1));
-//
-//         // pair.public != pks[0]
-//         let prover = ring_ctx.prover(&pks, 0).unwrap();
-//         let signature = pair.ring_vrf_sign(&data, &prover);
-//
-//         let verifier = ring_ctx.verifier(&pks).unwrap();
-//         assert!(!signature.ring_vrf_verify(&data, &verifier));
-//     }
-//
-//     #[test]
-//     fn ring_vrf_make_bytes_matches() {
-//         let ring_ctx = TestRingContext::new_testing();
-//
-//         let mut pks: Vec<_> = (0..16)
-//             .map(|i| Pair::from_seed(&[i as u8; 32]).public())
-//             .collect();
-//         assert!(pks.len() <= ring_ctx.max_keyset_size());
-//
-//         let pair = Pair::from_seed(DEV_SEED);
-//
-//         // Just pick one index to patch with the actual public key
-//         let prover_idx = 3;
-//         pks[prover_idx] = pair.public();
-//
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let i2 = VrfInput::new(b"dom2", b"bar");
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], [i1.clone(), i2.clone()]);
-//
-//         let prover = ring_ctx.prover(&pks, prover_idx).unwrap();
-//         let signature = pair.ring_vrf_sign(&data, &prover);
-//
-//         let o10 = pair.make_bytes::<32>(b"ctx1", &i1);
-//         let o11 = signature.outputs[0].make_bytes::<32>(b"ctx1", &i1);
-//         assert_eq!(o10, o11);
-//
-//         let o20 = pair.make_bytes::<48>(b"ctx2", &i2);
-//         let o21 = signature.outputs[1].make_bytes::<48>(b"ctx2", &i2);
-//         assert_eq!(o20, o21);
-//     }
-//
-//     #[test]
-//     fn encode_decode_ring_vrf_signature() {
-//         let ring_ctx = TestRingContext::new_testing();
-//
-//         let mut pks: Vec<_> = (0..16)
-//             .map(|i| Pair::from_seed(&[i as u8; 32]).public())
-//             .collect();
-//         assert!(pks.len() <= ring_ctx.max_keyset_size());
-//
-//         let pair = Pair::from_seed(DEV_SEED);
-//
-//         // Just pick one...
-//         let prover_idx = 3;
-//         pks[prover_idx] = pair.public();
-//
-//         let i1 = VrfInput::new(b"dom1", b"foo");
-//         let i2 = VrfInput::new(b"dom2", b"bar");
-//         let i3 = VrfInput::new(b"dom3", b"baz");
-//
-//         let data = VrfSignData::new_unchecked(b"mydata", &[b"tdata"], [i1, i2, i3]);
-//
-//         let prover = ring_ctx.prover(&pks, prover_idx).unwrap();
-//         let expected = pair.ring_vrf_sign(&data, &prover);
-//
-//         let bytes = expected.encode();
-//
-//         let expected_len =
-//             data.inputs.len() * PREOUT_SERIALIZED_SIZE + RING_SIGNATURE_SERIALIZED_SIZE + 1;
-//         assert_eq!(bytes.len(), expected_len);
-//
-//         let decoded = RingVrfSignature::decode(&mut bytes.as_slice()).unwrap();
-//         assert_eq!(expected, decoded);
-//     }
-//
-//     #[test]
-//     fn encode_decode_ring_vrf_context() {
-//         let ctx1 = TestRingContext::new_testing();
-//         let enc1 = ctx1.encode();
-//
-//         let _ti = <TestRingContext as TypeInfo>::type_info();
-//
-//         assert_eq!(enc1.len(), ring_context_serialized_size(TEST_DOMAIN_SIZE));
-//         assert_eq!(enc1.len(), TestRingContext::max_encoded_len());
-//
-//         let ctx2 = TestRingContext::decode(&mut enc1.as_slice()).unwrap();
-//         let enc2 = ctx2.encode();
-//
-//         assert_eq!(enc1, enc2);
-//     }
-//
-//     #[test]
-//     fn encode_decode_verifier_data() {
-//         let ring_ctx = TestRingContext::new_testing();
-//
-//         let pks: Vec<_> = (0..16)
-//             .map(|i| Pair::from_seed(&[i as u8; 32]).public())
-//             .collect();
-//         assert!(pks.len() <= ring_ctx.max_keyset_size());
-//
-//         let verifier_data = ring_ctx.verifier_data(&pks).unwrap();
-//         let enc1 = verifier_data.encode();
-//
-//         assert_eq!(enc1.len(), RING_VERIFIER_DATA_SERIALIZED_SIZE);
-//         assert_eq!(
-//             RingVerifierData::max_encoded_len(),
-//             RING_VERIFIER_DATA_SERIALIZED_SIZE
-//         );
-//
-//         let vd2 = RingVerifierData::decode(&mut enc1.as_slice()).unwrap();
-//         let enc2 = vd2.encode();
-//
-//         assert_eq!(enc1, enc2);
-//     }
-// }
-
 pub const BANDERSNATCH_SEED_SIZE: usize = 32; // SEED_SERIALIZED_SIZE
 pub const BANDERSNATCH_SECRET_KEY_SIZE: usize = BANDERSNATCH_SEED_SIZE;
 pub const BANDERSNATCH_PUBLIC_KEY_SIZE: usize = 33; // PUBLIC_KEY_LENGTH
@@ -1431,7 +781,7 @@ pub unsafe extern "C" fn bandersnatch_sign(
 
     let data = slice::from_raw_parts(message_ptr, message_size as usize);
 
-    let pair = Pair { secret, seed };
+    let pair = Pair { secret, _seed: seed };
 
     let signature = pair.sign(&data);
 
@@ -1511,7 +861,7 @@ pub unsafe extern "C" fn bandersnatch_vrf_output(
 
     let secret = SecretKey::from_seed(&seed);
 
-    let pair = Pair { secret, seed };
+    let pair = Pair { secret, _seed: seed };
 
     let input = &*(input_ptr as *const vrf::VrfInput);
 
@@ -1720,7 +1070,7 @@ pub unsafe extern "C" fn bandersnatch_vrf_sign(
 
     let secret = SecretKey::from_seed(&seed);
 
-    let pair = Pair { secret, seed };
+    let pair = Pair { secret, _seed: seed };
 
     let sign_data = &*(sign_data_ptr as *const vrf::VrfSignData);
 
@@ -1933,7 +1283,7 @@ pub unsafe extern "C" fn bandersnatch_ring_vrf_sign(
 
     let secret = SecretKey::from_seed(&seed);
 
-    let pair = Pair { secret, seed };
+    let pair = Pair { secret, _seed: seed };
 
     let sign_data = &*(sign_data_ptr as *const VrfSignData);
 
