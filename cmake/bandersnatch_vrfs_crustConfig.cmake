@@ -94,6 +94,4 @@ unset(static_lib_path)
 unset(lib_path)
 unset(include_path)
 
-#include("${CMAKE_CURRENT_LIST_DIR}/bandersnatch_vrfs_crustTargets.cmake")
-
 check_required_components(bandersnatch_vrfs_crust)
