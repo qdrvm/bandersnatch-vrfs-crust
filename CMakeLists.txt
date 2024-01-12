@@ -32,8 +32,6 @@ if (NOT EXISTS "${CMAKE_TOOLCHAIN_FILE}")
   set(CMAKE_POSITION_INDEPENDENT_CODE TRUE)
 endif ()
 
-add_subdirectory(bandersnatch_vrfs-cpp)
-
 if (TESTING)
   enable_testing()
   add_subdirectory(test)
@@ -49,24 +47,24 @@ install(
     DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}
 )
 
-export(EXPORT bandersnatch_vrfs_crust_targets
-  FILE "${CMAKE_CURRENT_BINARY_DIR}/bandersnatch_vrfs_crust/bandersnatch_vrfs_crustTargets.cmake"
-  NAMESPACE bandersnatch_vrfs_crust::
-)
+#export(EXPORT bandersnatch_vrfs_crust_targets
+#  FILE "${CMAKE_CURRENT_BINARY_DIR}/bandersnatch_vrfs_crust/bandersnatch_vrfs_crustTargets.cmake"
+#  NAMESPACE bandersnatch_vrfs_crust::
+#)
 configure_file(cmake/bandersnatch_vrfs_crustConfig.cmake
   "${CMAKE_CURRENT_BINARY_DIR}/bandersnatch_vrfs_crust/bandersnatch_vrfs_crustConfig.cmake"
   COPYONLY
 )
 
 set(ConfigPackageLocation lib/cmake/bandersnatch_vrfs_crust)
-install(EXPORT bandersnatch_vrfs_crust_targets
-  FILE
-    bandersnatch_vrfs_crustTargets.cmake
-  NAMESPACE
-    bandersnatch_vrfs_crust::
-  DESTINATION
-    ${ConfigPackageLocation}
-)
+#install(EXPORT bandersnatch_vrfs_crust_targets
+#  FILE
+#    bandersnatch_vrfs_crustTargets.cmake
+#  NAMESPACE
+#    bandersnatch_vrfs_crust::
+#  DESTINATION
+#    ${ConfigPackageLocation}
+#)
 install(
   FILES
     cmake/bandersnatch_vrfs_crustConfig.cmake

@@ -11,5 +11,5 @@ fn main() {
         .with_config(Config::from_file("./cbindgen.toml").expect("Parsing config failed"))
         .generate()
         .expect("Unable to generate bindings")
-        .write_to_file("./bandersnatch_vrfs-cpp/bandersnatch_vrfs_crust.h");
+        .write_to_file("./include/bandersnatch_vrfs.h");
 }
